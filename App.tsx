@@ -8,7 +8,7 @@ import CustomerDashboard from './components/dashboard/CustomerDashboard';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import type { UserRole, Client, Ticket, Asset } from './types';
-import { clients as mockClients, tickets as mockTickets, assets as mockAssets } from './data/mockData';
+import { PeresSystemsLogo } from './components/icons';
 
 
 type AppView = 'home' | 'login' | 'signup';
@@ -22,12 +22,15 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
 
-  // Centralized State Management - using mock data
-  const [clients, setClients] = useState<Client[]>(mockClients);
-  const [tickets, setTickets] = useState<Ticket[]>(mockTickets);
-  const [assets, setAssets] = useState<Asset[]>(mockAssets);
+  // --- API-driven State Management ---
+  const [clients, setClients] = useState<Client[]>([]);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [guidesByAssetModel, setGuidesByAssetModel] = useState<Record<string, { name: string, content: string }>>({});
   const [isUploadingGuideForModel, setIsUploadingGuideForModel] = useState<string | null>(null);
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Check for saved session on initial load
   useEffect(() => {
@@ -39,55 +42,169 @@ const App: React.FC = () => {
     }
   }, []);
   
-  // --- State-based CRUD Operations ---
-  // Clients
-  const addClient = (client: Omit<Client, 'id' | 'createdAt'>) => {
-    const newClient: Client = {
-        ...client,
-        id: `c${Date.now()}`,
-        createdAt: new Date().toISOString().split('T')[0],
+  // Fetch initial data from API on load
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const [clientsRes, ticketsRes, assetsRes] = await Promise.all([
+          fetch('/api/clients/'),
+          fetch('/api/tickets/'),
+          fetch('/api/assets/')
+        ]);
+
+        if (!clientsRes.ok || !ticketsRes.ok || !assetsRes.ok) {
+          throw new Error('Network response was not ok');
+        }
+
+        const clientsData = await clientsRes.json();
+        const ticketsData = await ticketsRes.json();
+        const assetsData = await assetsRes.json();
+
+        setClients(clientsData);
+        setTickets(ticketsData);
+        setAssets(assetsData);
+
+      } catch (err) {
+        setError('Failed to fetch initial data. Please ensure the backend server is running and the API endpoints (/api/clients/, /api/tickets/, /api/assets/) are available.');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    setClients(prev => [newClient, ...prev]);
+    fetchInitialData();
+  }, []);
+
+  
+  // --- API-based CRUD Operations ---
+  // Clients
+  const addClient = async (client: Omit<Client, 'id' | 'createdAt'>): Promise<Client | null> => {
+    try {
+        const response = await fetch('/api/clients/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(client),
+        });
+        if (!response.ok) throw new Error('Failed to add client');
+        const newClient = await response.json();
+        setClients(prev => [newClient, ...prev]);
+        return newClient;
+    } catch (err) {
+        console.error(err);
+        alert('Error: Could not add client.');
+        return null;
+    }
   };
-  const updateClient = (updatedClient: Client) => {
-    setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
+  const updateClient = async (updatedClient: Client) => {
+    try {
+        const response = await fetch(`/api/clients/${updatedClient.id}/`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedClient),
+        });
+        if (!response.ok) throw new Error('Failed to update client');
+        const returnedClient = await response.json();
+        setClients(prev => prev.map(c => c.id === returnedClient.id ? returnedClient : c));
+    } catch (err) {
+        console.error(err);
+        alert('Error: Could not update client.');
+    }
   };
-  const deleteClient = (clientId: string) => {
-    setClients(prev => prev.filter(c => c.id !== clientId));
-    // Also delete associated tickets and assets for data consistency
-    setTickets(prev => prev.filter(t => t.clientId !== clientId));
-    setAssets(prev => prev.filter(a => a.clientId !== clientId));
+  const deleteClient = async (clientId: string) => {
+    try {
+        const response = await fetch(`/api/clients/${clientId}/`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete client');
+        setClients(prev => prev.filter(c => c.id !== clientId));
+        // Backend should handle cascading deletes. Optimistically remove from frontend.
+        setTickets(prev => prev.filter(t => t.clientId !== clientId));
+        setAssets(prev => prev.filter(a => a.clientId !== clientId));
+    } catch (err) {
+        console.error(err);
+        alert('Error: Could not delete client.');
+    }
   };
 
   // Tickets
-  const addTicket = (ticket: Omit<Ticket, 'id' | 'createdAt'>) => {
-    const newTicket: Ticket = {
-        ...ticket,
-        id: `t${Date.now()}`,
-        createdAt: new Date().toISOString().split('T')[0],
-    };
-    setTickets(prev => [newTicket, ...prev]);
+  const addTicket = async (ticket: Omit<Ticket, 'id' | 'createdAt'>) => {
+     try {
+        const response = await fetch('/api/tickets/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ticket),
+        });
+        if (!response.ok) throw new Error('Failed to create ticket');
+        const newTicket = await response.json();
+        setTickets(prev => [newTicket, ...prev]);
+    } catch (err) {
+        console.error(err);
+        alert('Error: Could not create ticket.');
+    }
   };
-  const updateTicket = (updatedTicket: Ticket) => {
-    setTickets(prev => prev.map(t => t.id === updatedTicket.id ? updatedTicket : t));
+  const updateTicket = async (updatedTicket: Ticket) => {
+    try {
+        const response = await fetch(`/api/tickets/${updatedTicket.id}/`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedTicket),
+        });
+        if (!response.ok) throw new Error('Failed to update ticket');
+        const returnedTicket = await response.json();
+        setTickets(prev => prev.map(t => t.id === returnedTicket.id ? returnedTicket : t));
+    } catch (err) {
+        console.error(err);
+        alert('Error: Could not update ticket.');
+    }
   };
-  const deleteTicket = (ticketId: string) => {
-    setTickets(prev => prev.filter(t => t.id !== ticketId));
+  const deleteTicket = async (ticketId: string) => {
+    try {
+        const response = await fetch(`/api/tickets/${ticketId}/`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete ticket');
+        setTickets(prev => prev.filter(t => t.id !== ticketId));
+    } catch (err) {
+        console.error(err);
+        alert('Error: Could not delete ticket.');
+    }
   };
 
   // Assets
-  const addAsset = (asset: Omit<Asset, 'id'>) => {
-    const newAsset: Asset = {
-        ...asset,
-        id: `a${Date.now()}`,
-    };
-    setAssets(prev => [newAsset, ...prev]);
+  const addAsset = async (asset: Omit<Asset, 'id'>) => {
+    try {
+        const response = await fetch('/api/assets/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(asset),
+        });
+        if (!response.ok) throw new Error('Failed to add asset');
+        const newAsset = await response.json();
+        setAssets(prev => [newAsset, ...prev]);
+    } catch (err) {
+        console.error(err);
+        alert('Error: Could not add asset.');
+    }
   };
-  const updateAsset = (updatedAsset: Asset) => {
-    setAssets(prev => prev.map(a => a.id === updatedAsset.id ? updatedAsset : a));
+  const updateAsset = async (updatedAsset: Asset) => {
+    try {
+        const response = await fetch(`/api/assets/${updatedAsset.id}/`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedAsset),
+        });
+        if (!response.ok) throw new Error('Failed to update asset');
+        const returnedAsset = await response.json();
+        setAssets(prev => prev.map(a => a.id === returnedAsset.id ? returnedAsset : a));
+    } catch (err) {
+        console.error(err);
+        alert('Error: Could not update asset.');
+    }
   };
-  const deleteAsset = (assetId: string) => {
-    setAssets(prev => prev.filter(a => a.id !== assetId));
+  const deleteAsset = async (assetId: string) => {
+     try {
+        const response = await fetch(`/api/assets/${assetId}/`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete asset');
+        setAssets(prev => prev.filter(a => a.id !== assetId));
+    } catch (err) {
+        console.error(err);
+        alert('Error: Could not delete asset.');
+    }
   };
   
   // AI Assistant (client-side file handling)
@@ -127,12 +244,46 @@ const App: React.FC = () => {
     setView('home');
   };
 
-  const handleSignUp = (newClientData: Omit<Client, 'id' | 'createdAt'>) => {
-    addClient(newClientData);
-    // In a real app, successful creation would lead to login,
-    // but here we just simulate it after the add attempt.
-    handleLogin('customer');
+  const handleSignUp = async (newClientData: Omit<Client, 'id' | 'createdAt'>) => {
+    const newClient = await addClient(newClientData);
+    if (newClient) {
+      // In a real app, successful creation would lead to login,
+      // but here we just simulate it after the add attempt.
+      handleLogin('customer');
+    }
   };
+
+  if (isLoading) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-darker text-white">
+            <PeresSystemsLogo className="h-20 w-auto mb-8 animate-pulse" />
+            <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 bg-primary rounded-full animate-bounce"></div>
+                <div className="w-4 h-4 bg-primary rounded-full animate-bounce delay-150"></div>
+                <div className="w-4 h-4 bg-primary rounded-full animate-bounce delay-300"></div>
+            </div>
+            <p className="mt-4 text-lg">Loading Application Data...</p>
+        </div>
+    );
+  }
+
+  if (error) {
+     return (
+        <div className="flex items-center justify-center min-h-screen bg-neutral-darker text-white p-8">
+            <div className="max-w-2xl text-center bg-neutral-dark p-10 rounded-lg shadow-2xl border border-red-500/50">
+                <h1 className="text-3xl font-bold text-red-400 mb-4">Connection Error</h1>
+                <p className="text-lg text-gray-300 mb-6">{error}</p>
+                <code className="block bg-neutral-darker text-left p-4 rounded-md text-gray-400 text-sm whitespace-pre-wrap">
+                  {`# To fix this:
+1. Navigate to your backend project directory.
+2. Start your Django development server:
+   python manage.py runserver
+3. Refresh this page.`}
+                </code>
+            </div>
+        </div>
+    );
+  }
 
   if (isAuthenticated && userRole) {
     if (userRole === 'team') {
