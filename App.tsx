@@ -9,7 +9,9 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import type { UserRole, Client, Ticket, Asset } from './types';
 import { PeresSystemsLogo } from './components/icons';
+import { authService } from './services/auth';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://peres.systems';
 
 type AppView = 'home' | 'login' | 'signup';
 
@@ -32,24 +34,67 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to make authenticated API calls
+  const apiCall = async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
+    const token = authService.getToken();
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers,
+    };
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    // Handle 401 Unauthorized - token expired or invalid
+    if (response.status === 401) {
+      authService.logout();
+      setIsAuthenticated(false);
+      setUserRole(null);
+      setView('login');
+      throw new Error('Session expired. Please login again.');
+    }
+
+    return response;
+  };
+
   // Check for saved session on initial load
   useEffect(() => {
-    const storedAuth = localStorage.getItem('isAuthenticated');
-    const storedRole = localStorage.getItem('userRole') as UserRole | null;
-    if (storedAuth === 'true' && storedRole) {
-      setIsAuthenticated(true);
-      setUserRole(storedRole);
-    }
+    const checkAuth = async () => {
+      if (authService.isAuthenticated()) {
+        // Verify token is still valid by fetching user info
+        const user = await authService.getCurrentUser();
+        if (user) {
+          const storedRole = localStorage.getItem('userRole') as UserRole | null;
+          setIsAuthenticated(true);
+          setUserRole(storedRole || 'team');
+        } else {
+          // Token invalid, clear auth
+          authService.logout();
+        }
+      }
+      setIsLoading(false);
+    };
+    checkAuth();
   }, []);
   
-  // Fetch initial data from API on load
+  // Fetch initial data from API only after authentication
   useEffect(() => {
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchInitialData = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
         const [clientsRes, ticketsRes, assetsRes] = await Promise.all([
-          fetch('/api/clients/'),
-          fetch('/api/tickets/'),
-          fetch('/api/assets/')
+          apiCall('/api/clients'),
+          apiCall('/api/tickets'),
+          apiCall('/api/assets')
         ]);
 
         if (!clientsRes.ok || !ticketsRes.ok || !assetsRes.ok) {
@@ -65,23 +110,23 @@ const App: React.FC = () => {
         setAssets(assetsData);
 
       } catch (err) {
-        setError('Failed to fetch initial data. Please ensure the backend server is running and the API endpoints (/api/clients/, /api/tickets/, /api/assets/) are available.');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch initial data. Please ensure the backend server is running and the API endpoints are available.';
+        setError(errorMessage);
         console.error(err);
       } finally {
         setIsLoading(false);
       }
     };
     fetchInitialData();
-  }, []);
+  }, [isAuthenticated]);
 
   
   // --- API-based CRUD Operations ---
   // Clients
   const addClient = async (client: Omit<Client, 'id' | 'createdAt'>): Promise<Client | null> => {
     try {
-        const response = await fetch('/api/clients/', {
+        const response = await apiCall('/api/clients', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(client),
         });
         if (!response.ok) throw new Error('Failed to add client');
@@ -96,9 +141,8 @@ const App: React.FC = () => {
   };
   const updateClient = async (updatedClient: Client) => {
     try {
-        const response = await fetch(`/api/clients/${updatedClient.id}/`, {
+        const response = await apiCall(`/api/clients/${updatedClient.id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updatedClient),
         });
         if (!response.ok) throw new Error('Failed to update client');
@@ -111,7 +155,7 @@ const App: React.FC = () => {
   };
   const deleteClient = async (clientId: string) => {
     try {
-        const response = await fetch(`/api/clients/${clientId}/`, { method: 'DELETE' });
+        const response = await apiCall(`/api/clients/${clientId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Failed to delete client');
         setClients(prev => prev.filter(c => c.id !== clientId));
         // Backend should handle cascading deletes. Optimistically remove from frontend.
@@ -126,9 +170,8 @@ const App: React.FC = () => {
   // Tickets
   const addTicket = async (ticket: Omit<Ticket, 'id' | 'createdAt'>) => {
      try {
-        const response = await fetch('/api/tickets/', {
+        const response = await apiCall('/api/tickets', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(ticket),
         });
         if (!response.ok) throw new Error('Failed to create ticket');
@@ -141,9 +184,8 @@ const App: React.FC = () => {
   };
   const updateTicket = async (updatedTicket: Ticket) => {
     try {
-        const response = await fetch(`/api/tickets/${updatedTicket.id}/`, {
+        const response = await apiCall(`/api/tickets/${updatedTicket.id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updatedTicket),
         });
         if (!response.ok) throw new Error('Failed to update ticket');
@@ -156,7 +198,7 @@ const App: React.FC = () => {
   };
   const deleteTicket = async (ticketId: string) => {
     try {
-        const response = await fetch(`/api/tickets/${ticketId}/`, { method: 'DELETE' });
+        const response = await apiCall(`/api/tickets/${ticketId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Failed to delete ticket');
         setTickets(prev => prev.filter(t => t.id !== ticketId));
     } catch (err) {
@@ -168,9 +210,8 @@ const App: React.FC = () => {
   // Assets
   const addAsset = async (asset: Omit<Asset, 'id'>) => {
     try {
-        const response = await fetch('/api/assets/', {
+        const response = await apiCall('/api/assets', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(asset),
         });
         if (!response.ok) throw new Error('Failed to add asset');
@@ -183,9 +224,8 @@ const App: React.FC = () => {
   };
   const updateAsset = async (updatedAsset: Asset) => {
     try {
-        const response = await fetch(`/api/assets/${updatedAsset.id}/`, {
+        const response = await apiCall(`/api/assets/${updatedAsset.id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updatedAsset),
         });
         if (!response.ok) throw new Error('Failed to update asset');
@@ -198,7 +238,7 @@ const App: React.FC = () => {
   };
   const deleteAsset = async (assetId: string) => {
      try {
-        const response = await fetch(`/api/assets/${assetId}/`, { method: 'DELETE' });
+        const response = await apiCall(`/api/assets/${assetId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Failed to delete asset');
         setAssets(prev => prev.filter(a => a.id !== assetId));
     } catch (err) {
@@ -228,20 +268,22 @@ const App: React.FC = () => {
   };
 
 
-  const handleLogin = (role: UserRole) => {
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userRole', role);
+  const handleLogin = (role: UserRole, token: string) => {
     setIsAuthenticated(true);
     setUserRole(role);
     setView('home'); // Redirect to home/dashboard view after login
+    // Token is already stored by authService.login()
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userRole');
+    authService.logout();
     setIsAuthenticated(false);
     setUserRole(null);
     setView('home');
+    // Clear data on logout
+    setClients([]);
+    setTickets([]);
+    setAssets([]);
   };
 
   const handleSignUp = async (newClientData: Omit<Client, 'id' | 'createdAt'>) => {
@@ -249,11 +291,12 @@ const App: React.FC = () => {
     if (newClient) {
       // In a real app, successful creation would lead to login,
       // but here we just simulate it after the add attempt.
-      handleLogin('customer');
+      // Note: Signup should probably call /api/auth/register instead
+      handleLogin('customer', '');
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !isAuthenticated) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-darker text-white">
             <PeresSystemsLogo className="h-20 w-auto mb-8 animate-pulse" />
@@ -262,24 +305,26 @@ const App: React.FC = () => {
                 <div className="w-4 h-4 bg-primary rounded-full animate-bounce delay-150"></div>
                 <div className="w-4 h-4 bg-primary rounded-full animate-bounce delay-300"></div>
             </div>
-            <p className="mt-4 text-lg">Loading Application Data...</p>
+            <p className="mt-4 text-lg">Loading...</p>
         </div>
     );
   }
 
-  if (error) {
+  if (error && isAuthenticated) {
      return (
         <div className="flex items-center justify-center min-h-screen bg-neutral-darker text-white p-8">
             <div className="max-w-2xl text-center bg-neutral-dark p-10 rounded-lg shadow-2xl border border-red-500/50">
                 <h1 className="text-3xl font-bold text-red-400 mb-4">Connection Error</h1>
                 <p className="text-lg text-gray-300 mb-6">{error}</p>
-                <code className="block bg-neutral-darker text-left p-4 rounded-md text-gray-400 text-sm whitespace-pre-wrap">
-                  {`# To fix this:
-1. Navigate to your backend project directory.
-2. Start your Django development server:
-   python manage.py runserver
-3. Refresh this page.`}
-                </code>
+                <button
+                  onClick={() => {
+                    setError(null);
+                    window.location.reload();
+                  }}
+                  className="px-4 py-2 bg-primary hover:bg-primary-dark rounded-md"
+                >
+                  Retry
+                </button>
             </div>
         </div>
     );

@@ -1,30 +1,59 @@
 import React, { useState } from 'react';
 import type { UserRole } from '../types';
 import { GoogleIcon, PeresSystemsLogo } from '../components/icons';
+import { authService, type LoginCredentials } from '../services/auth';
 
 interface LoginPageProps {
-  onLogin: (role: UserRole) => void;
+  onLogin: (role: UserRole, token: string) => void;
   onNavigateToSignup: () => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToSignup }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleTeamLogin = (e: React.FormEvent) => {
+  const handleTeamLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you'd validate credentials here.
-    // For this demo, any team email/password will work.
-    if (email && password) {
-      onLogin('team');
-    } else {
-      alert('Please enter email and password for team login.');
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      // Call FastAPI /api/auth/login endpoint
+      const credentials: LoginCredentials = {
+        username: email, // FastAPI uses 'username' field (can be email)
+        password: password,
+      };
+
+      const authResponse = await authService.login(credentials);
+      
+      // Get user info to determine role
+      const user = await authService.getCurrentUser();
+      
+      // Determine role based on user data or default to 'team'
+      // You may need to adjust this based on your user model
+      const role: UserRole = 'team'; // Default to team for now
+      
+      // Store authentication state
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('userRole', role);
+      
+      // Call parent handler with token
+      onLogin(role, authResponse.access_token);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
+      setError(errorMessage);
+      console.error('Login error:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = () => {
-    // This simulates a successful Google Sign-In for a customer.
-    onLogin('customer');
+    // Google OAuth integration would go here
+    // For now, this is a placeholder
+    setError('Google login not yet implemented. Please use team member login.');
   };
 
   return (
@@ -37,13 +66,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToSignup }) =>
           </h2>
         </div>
         
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+        
         {/* Customer Login */}
         <div className="space-y-4">
             <h3 className="text-lg font-medium text-center text-neutral dark:text-gray-300">Customer Portal</h3>
             <button
                 onClick={handleGoogleLogin}
                 type="button"
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#4285F4] hover:bg-[#357ae8] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4285F4] transition-colors"
+                disabled={isLoading}
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#4285F4] hover:bg-[#357ae8] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4285F4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 <span className="absolute left-0 inset-y-0 flex items-center pl-3">
                     <GoogleIcon className="h-5 w-5 bg-white rounded-full p-0.5" />
@@ -77,9 +113,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToSignup }) =>
                 type="email"
                 autoComplete="email"
                 required
+                disabled={isLoading}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm disabled:opacity-50"
                 placeholder="Email address"
               />
             </div>
@@ -93,9 +130,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToSignup }) =>
                 type="password"
                 autoComplete="current-password"
                 required
+                disabled={isLoading}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm disabled:opacity-50"
                 placeholder="Password"
               />
             </div>
@@ -104,9 +142,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToSignup }) =>
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign in
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
         </form>
