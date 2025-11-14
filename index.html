@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Peres Systems - IT Services</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'primary': '#3b82f6', // blue-500
+              'primary-dark': '#2563eb', // blue-600
+              'secondary': '#42A5F5',
+              'accent': '#FFC107',
+              'neutral-darker': '#111827', // gray-900
+              'neutral-dark': '#1f2937', // gray-800
+              'neutral': '#374151', // gray-700
+              'neutral-light': '#F9FAFB',
+              'status-red': '#ef4444', // red-500
+              'status-green': '#22c55e', // green-500
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.1"
+  }
+}
+</script>
+</head>
+  <body class="bg-neutral-light dark:bg-neutral-darker text-neutral-dark dark:text-neutral-light">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
