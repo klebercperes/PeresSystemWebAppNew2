@@ -105,8 +105,22 @@ const App: React.FC = () => {
         }
 
         const clientsData = await clientsRes.json();
-        const ticketsData = await ticketsRes.json();
+        const ticketsDataRaw = await ticketsRes.json();
         const assetsData = await assetsRes.json();
+
+        // Map backend tickets (title) to frontend tickets (subject)
+        const ticketsData: Ticket[] = ticketsDataRaw.map((t: any) => ({
+            id: t.id,
+            subject: t.title, // Map title to subject
+            clientId: t.clientId,
+            contact: t.contact || { name: '', email: '', phone: '' }, // Default if missing
+            assetId: t.assetId,
+            status: t.status,
+            description: t.description,
+            notes: t.notes,
+            attachments: t.attachments,
+            createdAt: t.createdDate || new Date().toISOString(),
+        }));
 
         setClients(clientsData);
         setTickets(ticketsData);
@@ -173,30 +187,76 @@ const App: React.FC = () => {
   // Tickets
   const addTicket = async (ticket: Omit<Ticket, 'id' | 'createdAt'>) => {
      try {
+        // Map frontend Ticket (subject) to backend API (title)
+        const apiTicket = {
+            clientId: ticket.clientId,
+            title: ticket.subject, // Map subject to title for backend
+            description: ticket.description,
+            status: ticket.status,
+        };
+        
         const response = await apiCall('/api/tickets', {
             method: 'POST',
-            body: JSON.stringify(ticket),
+            body: JSON.stringify(apiTicket),
         });
-        if (!response.ok) throw new Error('Failed to create ticket');
-        const newTicket = await response.json();
-        setTickets(prev => [newTicket, ...prev]);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Failed to create ticket' }));
+            throw new Error(errorData.detail || 'Failed to create ticket');
+        }
+        const backendTicket = await response.json();
+        
+        // Map backend response (title) back to frontend Ticket (subject)
+        const frontendTicket: Ticket = {
+            id: backendTicket.id,
+            subject: backendTicket.title, // Map title back to subject
+            clientId: backendTicket.clientId,
+            contact: ticket.contact, // Keep original contact info
+            assetId: ticket.assetId,
+            status: backendTicket.status,
+            description: backendTicket.description,
+            createdAt: backendTicket.createdDate,
+        };
+        
+        setTickets(prev => [frontendTicket, ...prev]);
     } catch (err) {
-        console.error(err);
-        alert('Error: Could not create ticket.');
+        console.error('Error creating ticket:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Error: Could not create ticket.';
+        alert(errorMessage);
     }
   };
   const updateTicket = async (updatedTicket: Ticket) => {
     try {
+        // Map frontend Ticket (subject) to backend API (title)
+        const apiTicket = {
+            clientId: updatedTicket.clientId,
+            title: updatedTicket.subject, // Map subject to title
+            description: updatedTicket.description,
+            status: updatedTicket.status,
+        };
+        
         const response = await apiCall(`/api/tickets/${updatedTicket.id}`, {
             method: 'PUT',
-            body: JSON.stringify(updatedTicket),
+            body: JSON.stringify(apiTicket),
         });
-        if (!response.ok) throw new Error('Failed to update ticket');
-        const returnedTicket = await response.json();
-        setTickets(prev => prev.map(t => t.id === returnedTicket.id ? returnedTicket : t));
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Failed to update ticket' }));
+            throw new Error(errorData.detail || 'Failed to update ticket');
+        }
+        const backendTicket = await response.json();
+        
+        // Map backend response (title) back to frontend Ticket (subject)
+        const frontendTicket: Ticket = {
+            ...updatedTicket,
+            subject: backendTicket.title, // Map title back to subject
+            status: backendTicket.status,
+            description: backendTicket.description,
+        };
+        
+        setTickets(prev => prev.map(t => t.id === frontendTicket.id ? frontendTicket : t));
     } catch (err) {
-        console.error(err);
-        alert('Error: Could not update ticket.');
+        console.error('Error updating ticket:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Error: Could not update ticket.';
+        alert(errorMessage);
     }
   };
   const deleteTicket = async (ticketId: string) => {
