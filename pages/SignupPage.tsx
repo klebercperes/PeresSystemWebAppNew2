@@ -1,36 +1,79 @@
 import React, { useState } from 'react';
-import type { Client } from '../types';
 import { PeresSystemsLogo } from '../components/icons';
+import { authService } from '../services/auth';
+import type { UserRole } from '../types';
 
 interface SignupPageProps {
-  onSignUp: (newClient: Omit<Client, 'id' | 'createdAt'>) => void;
+  onSignUp: (role: UserRole, token: string) => void;
   onNavigateToLogin: () => void;
 }
 
 const SignupPage: React.FC<SignupPageProps> = ({ onSignUp, onNavigateToLogin }) => {
   const [formData, setFormData] = useState({
-    companyName: '',
-    contactPerson: '',
+    username: '',
     email: '',
-    phone: '',
     password: '',
+    confirmPassword: '',
+    fullName: '',
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Basic validation
-    if (formData.password.length < 6) {
-        alert("Password must be at least 6 characters long.");
-        return;
+    setError(null);
+
+    // Validation
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
     }
-    // We don't use the password in this demo, but we pass the rest
-    const { password, ...clientData } = formData;
-    onSignUp(clientData);
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    if (!formData.email || !formData.username) {
+      setError('Email and username are required.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Register new user
+      const user = await authService.register({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        full_name: formData.fullName || undefined,
+      });
+
+      // Auto-login after registration
+      const loginResponse = await authService.login({
+        username: formData.email, // Can use email or username
+        password: formData.password,
+      });
+
+      // Determine role from user object
+      const role: UserRole = (user.role === 'team' ? 'team' : 'customer') as UserRole;
+      
+      // Store role
+      localStorage.setItem('userRole', role);
+      localStorage.setItem('isAuthenticated', 'true');
+
+      // Call parent handler
+      onSignUp(role, loginResponse.access_token);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+      setError(errorMessage);
+      console.error('Signup error:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -39,30 +82,92 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignUp, onNavigateToLogin }) 
         <div>
           <PeresSystemsLogo className="mx-auto h-12 w-auto text-primary" />
           <h2 className="mt-6 text-center text-3xl font-extrabold text-neutral-dark dark:text-white">
-            Create a new client account
+            Create a new account
           </h2>
         </div>
+
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm space-y-4">
-            <input name="companyName" type="text" required value={formData.companyName} onChange={handleChange} className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" placeholder="Company Name" />
-            <input name="contactPerson" type="text" required value={formData.contactPerson} onChange={handleChange} className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" placeholder="Contact Person" />
-            <input name="email" type="email" autoComplete="email" required value={formData.email} onChange={handleChange} className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" placeholder="Email address" />
-            <input name="phone" type="tel" required value={formData.phone} onChange={handleChange} className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" placeholder="Phone Number" />
-            <input name="password" type="password" autoComplete="new-password" required value={formData.password} onChange={handleChange} className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" placeholder="Password" />
+            <input
+              name="username"
+              type="text"
+              required
+              disabled={isLoading}
+              value={formData.username}
+              onChange={handleChange}
+              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm disabled:opacity-50"
+              placeholder="Username"
+            />
+            <input
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              disabled={isLoading}
+              value={formData.email}
+              onChange={handleChange}
+              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm disabled:opacity-50"
+              placeholder="Email address"
+            />
+            <input
+              name="fullName"
+              type="text"
+              disabled={isLoading}
+              value={formData.fullName}
+              onChange={handleChange}
+              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm disabled:opacity-50"
+              placeholder="Full Name (optional)"
+            />
+            <input
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              disabled={isLoading}
+              value={formData.password}
+              onChange={handleChange}
+              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm disabled:opacity-50"
+              placeholder="Password (min 8 characters)"
+            />
+            <input
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              disabled={isLoading}
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-neutral bg-white dark:bg-neutral text-neutral-dark dark:text-white placeholder-gray-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm disabled:opacity-50"
+              placeholder="Confirm Password"
+            />
           </div>
 
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign Up
+              {isLoading ? 'Creating account...' : 'Sign Up'}
             </button>
           </div>
         </form>
 
         <div className="text-sm text-center">
-          <a href="#" onClick={(e) => { e.preventDefault(); onNavigateToLogin(); }} className="font-medium text-primary hover:text-primary-dark">
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              onNavigateToLogin();
+            }}
+            className="font-medium text-primary hover:text-primary-dark"
+          >
             Already have an account? Sign In
           </a>
         </div>
