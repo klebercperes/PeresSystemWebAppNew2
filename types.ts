@@ -1,59 +1,43 @@
-import React from 'react';
-
-export interface Service {
-  id: number;
-  title: string;
-  description: string;
-  imageUrl: string;
-  icon: (props: React.SVGProps<SVGSVGElement>) => React.ReactElement;
+export enum TicketStatus {
+  Open = 'Open',
+  InProgress = 'In Progress',
+  Paused = 'Paused',
+  Completed = 'Completed',
+  Canceled = 'Canceled',
+  Closed = 'Closed',
 }
-
-export type UserRole = 'customer' | 'team';
-
-export type TicketStatus = 'Open' | 'In Progress' | 'Closed';
 
 export interface Client {
   id: string;
-  companyName: string;
+  name: string; // Business Name
+  abn: string;
   contactPerson: string;
   email: string;
-  phone: string;
-  createdAt: string;
-}
-
-export interface TicketContact {
-    name: string;
-    email: string;
-    phone: string;
-    mobile?: string;
-}
-
-export interface Ticket {
-  id: string;
-  subject: string;
-  clientId: string;
-  contact: TicketContact;
-  assetId?: string;
-  status: TicketStatus;
-  description: string;
-  notes?: string;
-  attachments?: { name: string; }[];
-  createdAt: string;
+  address: string;
+  phone: string; // Business Phone
+  mobilePhone: string;
+  joinDate: string;
+  details?: string;
 }
 
 export interface Asset {
   id: string;
-  assetName: string;
-  type: string;
   clientId: string;
+  name: string;
+  type: 'Laptop' | 'Desktop' | 'Server' | 'Printer' | 'Router' | 'Other';
   purchaseDate: string;
-  warrantyEnd: string;
-  macAddress?: string;
-  serialNumber?: string;
+  warrantyEndDate: string;
+  notes?: string;
 }
 
-export interface ChartDataItem {
-    label: string;
-    value: number;
-    color: string;
+export interface Ticket {
+  id: string;
+  clientId: string;
+  title: string;
+  description: string;
+  status: TicketStatus;
+  createdDate: string;
+  resolvedDate?: string;
 }
+
+export type View = 'dashboard' | 'clients' | 'tickets' | 'assets' | 'ai-assistant' | 'users';
