@@ -104,9 +104,19 @@ const App: React.FC = () => {
           throw new Error('Network response was not ok');
         }
 
-        const clientsData = await clientsRes.json();
+        const clientsDataRaw = await clientsRes.json();
         const ticketsDataRaw = await ticketsRes.json();
         const assetsData = await assetsRes.json();
+
+        // Map backend clients (name) to frontend clients (companyName)
+        const clientsData: Client[] = clientsDataRaw.map((c: any) => ({
+            id: c.id,
+            companyName: c.name, // Map name to companyName
+            contactPerson: c.contactPerson,
+            email: c.email,
+            phone: c.phone || '',
+            createdAt: c.joinDate || new Date().toISOString(),
+        }));
 
         // Map backend tickets (title) to frontend tickets (subject)
         const ticketsData: Ticket[] = ticketsDataRaw.map((t: any) => ({
@@ -142,14 +152,31 @@ const App: React.FC = () => {
   // Clients
   const addClient = async (client: Omit<Client, 'id' | 'createdAt'>): Promise<Client | null> => {
     try {
+        // Map frontend Client (companyName) to backend API (name)
+        const apiClient = {
+            name: client.companyName, // Map companyName to name
+            contactPerson: client.contactPerson,
+            email: client.email,
+            phone: client.phone,
+        };
+        
         const response = await apiCall('/api/clients', {
             method: 'POST',
-            body: JSON.stringify(client),
+            body: JSON.stringify(apiClient),
         });
         if (!response.ok) throw new Error('Failed to add client');
-        const newClient = await response.json();
-        setClients(prev => [newClient, ...prev]);
-        return newClient;
+        const backendClient = await response.json();
+        // Map backend client (name) to frontend client (companyName)
+        const frontendClient: Client = {
+            id: backendClient.id,
+            companyName: backendClient.name, // Map name to companyName
+            contactPerson: backendClient.contactPerson,
+            email: backendClient.email,
+            phone: backendClient.phone || '',
+            createdAt: backendClient.joinDate || new Date().toISOString(),
+        };
+        setClients(prev => [frontendClient, ...prev]);
+        return frontendClient;
     } catch (err) {
         console.error(err);
         alert('Error: Could not add client.');
