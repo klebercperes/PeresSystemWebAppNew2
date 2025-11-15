@@ -185,13 +185,30 @@ const App: React.FC = () => {
   };
   const updateClient = async (updatedClient: Client) => {
     try {
+        // Map frontend Client (companyName) to backend API (name)
+        const apiClient = {
+            name: updatedClient.companyName, // Map companyName to name
+            contactPerson: updatedClient.contactPerson,
+            email: updatedClient.email,
+            phone: updatedClient.phone,
+        };
+        
         const response = await apiCall(`/api/clients/${updatedClient.id}`, {
             method: 'PUT',
-            body: JSON.stringify(updatedClient),
+            body: JSON.stringify(apiClient),
         });
         if (!response.ok) throw new Error('Failed to update client');
-        const returnedClient = await response.json();
-        setClients(prev => prev.map(c => c.id === returnedClient.id ? returnedClient : c));
+        const backendClient = await response.json();
+        // Map backend client (name) to frontend client (companyName)
+        const frontendClient: Client = {
+            id: backendClient.id,
+            companyName: backendClient.name, // Map name to companyName
+            contactPerson: backendClient.contactPerson,
+            email: backendClient.email,
+            phone: backendClient.phone || '',
+            createdAt: backendClient.joinDate || new Date().toISOString(),
+        };
+        setClients(prev => prev.map(c => c.id === frontendClient.id ? frontendClient : c));
     } catch (err) {
         console.error(err);
         alert('Error: Could not update client.');
