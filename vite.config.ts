@@ -6,8 +6,9 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       server: {
-        port: 3000,
-        host: '0.0.0.0',
+        port: 5173,
+        host: '0.0.0.0', // Allow access from network (not just localhost)
+        strictPort: false, // Try next available port if 5173 is taken
       },
       plugins: [react()],
       define: {
@@ -18,6 +19,19 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      build: {
+        outDir: 'dist',
+        assetsDir: 'assets',
+        sourcemap: false,
+        minify: 'esbuild',
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              vendor: ['react', 'react-dom'],
+            },
+          },
+        },
+      },
     };
 });
