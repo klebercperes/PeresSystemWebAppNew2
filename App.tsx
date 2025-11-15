@@ -393,14 +393,10 @@ const App: React.FC = () => {
     setAssets([]);
   };
 
-  const handleSignUp = async (newClientData: Omit<Client, 'id' | 'createdAt'>) => {
-    const newClient = await addClient(newClientData);
-    if (newClient) {
-      // In a real app, successful creation would lead to login,
-      // but here we just simulate it after the add attempt.
-      // Note: Signup should probably call /api/auth/register instead
-      handleLogin('customer', '');
-    }
+  const handleSignUp = (role: UserRole, token: string) => {
+    // Backend already creates client during registration, so we just handle login
+    // For email-only signup, client is created during email verification
+    handleLogin(role, token);
   };
 
   if (isLoading && !isAuthenticated) {
