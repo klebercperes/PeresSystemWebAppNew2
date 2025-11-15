@@ -88,9 +88,18 @@ const TicketModal: React.FC<TicketModalProps> = ({ ticket, clients, assets, onCl
                 
                 <div>
                     <label htmlFor="clientId" className="block text-sm font-medium text-gray-300">Client</label>
-                    <select id="clientId" value={clientId} onChange={(e) => setClientId(e.target.value)} required className="mt-1 block w-full bg-neutral text-white border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm p-2">
+                    <select 
+                        id="clientId" 
+                        value={clientId} 
+                        onChange={(e) => setClientId(e.target.value)} 
+                        required 
+                        className="mt-1 block w-full bg-neutral text-white border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm p-2"
+                    >
+                        <option value="">Select a client</option>
                         {clients.map(client => (
-                            <option key={client.id} value={client.id}>{client.companyName}</option>
+                            <option key={client.id} value={client.id}>
+                                {client.companyName || client.name || client.email}
+                            </option>
                         ))}
                     </select>
                 </div>
