@@ -91,19 +91,35 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ onLogout, clients
     }, [customerAssets]);
 
     const handleOpenTicket = (ticketData: Omit<Ticket, 'id' | 'createdAt' | 'clientId' | 'contact' | 'status'>) => {
-        if (!customerClient) return;
-        const newTicket: Omit<Ticket, 'id' | 'createdAt'> = {
-            ...ticketData,
-            clientId: customerClient.id,
-            contact: {
-                name: customerClient.contactPerson,
-                email: customerClient.email,
-                phone: customerClient.phone
-            },
-            status: 'Open'
-        };
-        onAddTicket(newTicket);
-        setIsTicketModalOpen(false);
+        if (!customerClient) {
+            alert('Error: Could not find your client account. Please contact support.');
+            console.error('No customer client found. Available clients:', clients);
+            return;
+        }
+        
+        if (!ticketData.subject || !ticketData.description) {
+            alert('Please fill in both subject and description.');
+            return;
+        }
+        
+        try {
+            const newTicket: Omit<Ticket, 'id' | 'createdAt'> = {
+                ...ticketData,
+                clientId: customerClient.id,
+                contact: {
+                    name: customerClient.contactPerson || customerClient.name || '',
+                    email: customerClient.email,
+                    phone: customerClient.phone || ''
+                },
+                status: 'Open'
+            };
+            console.log('Submitting ticket:', newTicket);
+            onAddTicket(newTicket);
+            setIsTicketModalOpen(false);
+        } catch (error) {
+            console.error('Error submitting ticket:', error);
+            alert('Error submitting ticket. Please try again.');
+        }
     }
 
     const handleContactSubmit = (message: string) => {
