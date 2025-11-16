@@ -73,7 +73,11 @@ const servicesData: Service[] = [
   },
 ];
 
-const ServicesGrid: React.FC = () => {
+interface ServicesGridProps {
+  onServiceClick?: (serviceId: number) => void;
+}
+
+const ServicesGrid: React.FC<ServicesGridProps> = ({ onServiceClick }) => {
   return (
     <section id="services" className="py-16 sm:py-20 bg-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -90,7 +94,7 @@ const ServicesGrid: React.FC = () => {
               className="animate-fade-in-up"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <ServiceCard service={service} />
+              <ServiceCard service={service} onServiceClick={onServiceClick} />
             </div>
           ))}
         </div>

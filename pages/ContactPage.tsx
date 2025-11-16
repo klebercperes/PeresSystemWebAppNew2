@@ -6,9 +6,10 @@ import BackToTop from '../components/BackToTop';
 interface ContactPageProps {
   onLoginClick: () => void;
   onServicesClick: () => void;
+  onHomeClick?: () => void;
 }
 
-const ContactPage: React.FC<ContactPageProps> = ({ onLoginClick, onServicesClick }) => {
+const ContactPage: React.FC<ContactPageProps> = ({ onLoginClick, onServicesClick, onHomeClick }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -70,6 +71,7 @@ const ContactPage: React.FC<ContactPageProps> = ({ onLoginClick, onServicesClick
         isAuthenticated={false} 
         onLoginClick={onLoginClick}
         onLogoutClick={() => {}}
+        onHomeClick={onHomeClick}
         onServicesClick={onServicesClick}
         onContactClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       />

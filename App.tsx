@@ -362,15 +362,38 @@ const App: React.FC = () => {
   // Show login screen if not authenticated
   if (!isAuthenticated) {
     if (showLogin) {
-      return <Login onLoginSuccess={handleLoginSuccess} />;
+      return (
+        <Login 
+          onLoginSuccess={handleLoginSuccess}
+          onHomeClick={() => {
+            setShowLogin(false);
+            setCurrentPage('home');
+          }}
+          onServicesClick={() => {
+            setShowLogin(false);
+            setCurrentPage('services');
+          }}
+          onContactClick={() => {
+            setShowLogin(false);
+            setCurrentPage('contact');
+          }}
+        />
+      );
     }
     
     // Show different pages based on currentPage state
     if (currentPage === 'services') {
+      // Extract serviceId from hash if present (e.g., #service-1)
+      const hash = window.location.hash;
+      const serviceIdMatch = hash.match(/service-(\d+)/);
+      const serviceId = serviceIdMatch ? parseInt(serviceIdMatch[1]) : undefined;
+      
       return (
         <ServicesPage
           onLoginClick={() => setShowLogin(true)}
           onContactClick={() => setCurrentPage('contact')}
+          onHomeClick={() => setCurrentPage('home')}
+          serviceId={serviceId}
         />
       );
     }
@@ -380,6 +403,7 @@ const App: React.FC = () => {
         <ContactPage
           onLoginClick={() => setShowLogin(true)}
           onServicesClick={() => setCurrentPage('services')}
+          onHomeClick={() => setCurrentPage('home')}
         />
       );
     }
@@ -387,7 +411,15 @@ const App: React.FC = () => {
     return (
       <HomePage
         onLoginClick={() => setShowLogin(true)}
-        onServicesClick={() => setCurrentPage('services')}
+        onServicesClick={(serviceId) => {
+          setCurrentPage('services');
+          // Set hash for scrolling to specific service
+          if (serviceId) {
+            setTimeout(() => {
+              window.location.hash = `service-${serviceId}`;
+            }, 100);
+          }
+        }}
         onContactClick={() => setCurrentPage('contact')}
       />
     );

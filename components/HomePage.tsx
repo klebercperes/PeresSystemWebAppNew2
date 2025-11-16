@@ -10,7 +10,7 @@ import BackToTop from './BackToTop';
 
 interface HomePageProps {
   onLoginClick: () => void;
-  onServicesClick?: () => void;
+  onServicesClick?: (serviceId?: number) => void;
   onContactClick?: () => void;
 }
 
@@ -25,19 +25,26 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onServicesClick, onCo
     }
   };
 
+  const handleServiceClick = (serviceId: number) => {
+    if (onServicesClick) {
+      onServicesClick(serviceId);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header 
         isAuthenticated={false} 
         onLoginClick={onLoginClick}
         onLogoutClick={() => {}}
-        onServicesClick={onServicesClick}
+        onHomeClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        onServicesClick={() => onServicesClick && onServicesClick()}
         onContactClick={onContactClick}
       />
       <main className="flex-grow">
         <HeroSection onGetStartedClick={handleGetStarted} />
         <StatsSection />
-        <ServicesGrid />
+        <ServicesGrid onServiceClick={handleServiceClick} />
         <WhyChooseUs />
         <div id="cta">
           <CTASection onGetStartedClick={handleGetStarted} />

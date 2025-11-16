@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import BackToTop from '../components/BackToTop';
@@ -90,15 +90,30 @@ const servicesData: Service[] = [
 interface ServicesPageProps {
   onLoginClick: () => void;
   onContactClick: () => void;
+  onHomeClick?: () => void;
+  serviceId?: number;
 }
 
-const ServicesPage: React.FC<ServicesPageProps> = ({ onLoginClick, onContactClick }) => {
+const ServicesPage: React.FC<ServicesPageProps> = ({ onLoginClick, onContactClick, onHomeClick, serviceId }) => {
+  useEffect(() => {
+    // Scroll to specific service if serviceId is provided
+    if (serviceId) {
+      setTimeout(() => {
+        const serviceElement = document.getElementById(`service-${serviceId}`);
+        if (serviceElement) {
+          serviceElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  }, [serviceId]);
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header 
         isAuthenticated={false} 
         onLoginClick={onLoginClick}
         onLogoutClick={() => {}}
+        onHomeClick={onHomeClick}
         onServicesClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         onContactClick={onContactClick}
       />
@@ -122,11 +137,13 @@ const ServicesPage: React.FC<ServicesPageProps> = ({ onLoginClick, onContactClic
               {servicesData.map((service, index) => {
                 const Icon = service.icon;
                 const isEven = index % 2 === 0;
+                const serviceSlug = service.title.toLowerCase().replace(/\s+/g, '-');
                 
                 return (
                   <div
                     key={service.id}
-                    className={`flex flex-col ${isEven ? 'lg:flex-row' : 'lg:flex-row-reverse'} gap-8 items-center`}
+                    id={`service-${service.id}`}
+                    className={`flex flex-col ${isEven ? 'lg:flex-row' : 'lg:flex-row-reverse'} gap-8 items-center scroll-mt-20`}
                   >
                     <div className={`flex-1 ${isEven ? 'lg:pr-8' : 'lg:pl-8'}`}>
                       <img
