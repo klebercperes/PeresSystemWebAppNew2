@@ -1,5 +1,5 @@
 // Auth service for FastAPI integration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://peres.systems';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://10.0.1.122:8000';
 
 export interface LoginCredentials {
   username: string; // FastAPI uses 'username' field
@@ -95,10 +95,15 @@ class AuthService {
     if (!token) return null;
 
     try {
+      // Don't add query parameter for cache-busting - it causes CORS preflight
+      // Rely on Cache-Control headers instead
       const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
         },
+        cache: 'no-store',
       });
 
       if (!response.ok) {
@@ -106,16 +111,20 @@ class AuthService {
           this.logout();
           return null;
         }
+        // Handle rate limiting (429) - don't throw, just return null to avoid breaking the app
+        if (response.status === 429) {
+          // Rate limited - return cached user if available
+          return this.getUser();
+        }
         throw new Error('Failed to get user');
       }
 
       const user: User = await response.json();
-      console.log('User data from API:', user);
       this.setUser(user);
       return user;
     } catch (error) {
-      console.error('Error fetching user:', error);
-      return null;
+      // Silently handle errors - return cached user if available
+      return this.getUser();
     }
   }
 

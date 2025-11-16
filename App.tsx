@@ -7,6 +7,9 @@ import { AssetManager } from './components/AssetManager';
 import { AiAssistant } from './components/AiAssistant';
 import { UserManager } from './components/UserManager';
 import { Login } from './components/Login';
+import HomePage from './components/HomePage';
+import ServicesPage from './pages/ServicesPage';
+import ContactPage from './pages/ContactPage';
 import { api } from './services/api';
 import { authService, User } from './services/auth';
 import { View, Client, Ticket, Asset } from './types';
@@ -20,29 +23,69 @@ const App: React.FC = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [showLogin, setShowLogin] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'contact'>('home');
 
-  const refreshData = async () => {
+  const refreshUserData = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      console.log('Starting to fetch data from API...');
+      const user = await authService.getCurrentUser();
+      if (user) {
+        // Only update if the user data actually changed to avoid unnecessary re-renders
+        setCurrentUser(prevUser => {
+          if (prevUser?.full_name !== user.full_name || 
+              prevUser?.username !== user.username ||
+              prevUser?.email !== user.email) {
+            return { ...user }; // Create new object to force React re-render
+          }
+          return prevUser; // No change, keep existing
+        });
+      }
+    } catch (err) {
+      // Silently ignore errors - don't spam console or break the app
+      // Rate limiting or network errors are expected occasionally
+    }
+  };
+
+  const refreshData = async (showLoading: boolean = true, showErrors: boolean = true, includeUser: boolean = true) => {
+    try {
+      if (showLoading) {
+        setLoading(true);
+      }
+      if (showErrors) {
+        setError(null);
+      }
       const [clientsData, ticketsData, assetsData] = await Promise.all([
         api.getClients(),
         api.getTickets(),
         api.getAssets(),
       ]);
-      console.log('Data fetched successfully:', { clients: clientsData.length, tickets: ticketsData.length, assets: assetsData.length });
-      setClients(clientsData);
-      setTickets(ticketsData);
-      setAssets(assetsData);
+      // Force state update by creating new array references
+      setClients([...clientsData]);
+      setTickets([...ticketsData]);
+      setAssets([...assetsData]);
+      setLastRefresh(new Date());
+      
+      // Only refresh user data if explicitly requested (to avoid rate limiting)
+      if (includeUser) {
+        await refreshUserData();
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
       console.error('Error refreshing data:', err);
-      setError(errorMessage);
+      // Only show error if this is a user-initiated refresh with error display enabled
+      if (showErrors) {
+        setError(errorMessage);
+      }
       // Make sure loading is set to false even on error
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -53,23 +96,22 @@ const App: React.FC = () => {
         try {
           // Verify token is still valid and get fresh user data
           const user = await authService.getCurrentUser();
-          console.log('Fetched user data:', user);
           if (user) {
             setIsAuthenticated(true);
+            setCurrentUser(user);
             // Don't wait for refreshData - let it load in background
-            refreshData().catch(err => {
+            // Don't include user refresh here to avoid duplicate calls
+            refreshData(true, true, false).catch(err => {
               console.error('Error refreshing data:', err);
               setError('Failed to load data. Please refresh the page.');
               setLoading(false);
             });
           } else {
-            console.warn('No user data returned from API');
             authService.logout();
             setIsAuthenticated(false);
             setLoading(false);
           }
         } catch (err) {
-          console.error('Auth check error:', err);
           // Token invalid, clear auth
           authService.logout();
           setIsAuthenticated(false);
@@ -84,19 +126,61 @@ const App: React.FC = () => {
     checkAuth();
   }, []);
 
+  // Auto-refresh data every 2 minutes to pick up admin updates (silent background refresh)
+  // Only refresh if we have data loaded (to avoid errors on initial load)
+  // Using 2 minutes to avoid rate limiting (AUTH_RATE_LIMIT is typically 5/minute)
+  useEffect(() => {
+    if (!isAuthenticated || clients.length === 0) return;
+
+    const intervalId = setInterval(() => {
+      // Silent background refresh - don't show loading or errors
+      // Don't refresh user data on every cycle to avoid rate limiting
+      refreshData(false, false, false).catch(() => {
+        // Silently ignore errors during background refresh
+      });
+    }, 120000); // Refresh every 2 minutes to avoid rate limiting
+
+    return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, clients.length]);
+
+  // Separate interval for user data refresh (every 3 minutes to avoid rate limiting)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const userRefreshInterval = setInterval(() => {
+      // Refresh user data less frequently to avoid rate limiting
+      refreshUserData().catch(() => {
+        // Silently ignore errors
+      });
+    }, 180000); // Refresh user data every 3 minutes
+
+    return () => clearInterval(userRefreshInterval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
   const handleLoginSuccess = async () => {
     setIsAuthenticated(true);
     // Fetch fresh user data to ensure is_superuser is loaded
-    await authService.getCurrentUser();
-    refreshData();
+    const user = await authService.getCurrentUser();
+    if (user) {
+      setCurrentUser(user);
+    }
+    // Don't include user refresh here to avoid duplicate calls
+    refreshData(true, true, false);
   };
 
   const handleLogout = () => {
     authService.logout();
     setIsAuthenticated(false);
+    setShowLogin(false); // Reset to show landing page instead of login
+    setCurrentPage('home'); // Reset to home page
     setClients([]);
     setTickets([]);
     setAssets([]);
+    setCurrentUser(null);
+    // Scroll to top when logging out
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // --- Client Handlers ---
@@ -214,7 +298,17 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard clients={clients} tickets={tickets} assets={assets} />;
+        return (
+          <Dashboard 
+            clients={clients} 
+            tickets={tickets} 
+            assets={assets}
+            onAddTicket={handleAddTicket}
+            onUpdateTicket={handleUpdateTicket}
+            onDeleteTicket={handleDeleteTicket}
+            currentUser={user}
+          />
+        );
       case 'clients':
         return (
           <ClientManager 
@@ -247,7 +341,7 @@ const App: React.FC = () => {
       case 'ai-assistant':
         return <AiAssistant />;
       case 'users':
-        return <UserManager currentUser={authService.getUser()} />;
+        return <UserManager currentUser={user} />;
       default:
         return <Dashboard clients={clients} tickets={tickets} assets={assets} />;
     }
@@ -267,7 +361,36 @@ const App: React.FC = () => {
 
   // Show login screen if not authenticated
   if (!isAuthenticated) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
+    if (showLogin) {
+      return <Login onLoginSuccess={handleLoginSuccess} />;
+    }
+    
+    // Show different pages based on currentPage state
+    if (currentPage === 'services') {
+      return (
+        <ServicesPage
+          onLoginClick={() => setShowLogin(true)}
+          onContactClick={() => setCurrentPage('contact')}
+        />
+      );
+    }
+    
+    if (currentPage === 'contact') {
+      return (
+        <ContactPage
+          onLoginClick={() => setShowLogin(true)}
+          onServicesClick={() => setCurrentPage('services')}
+        />
+      );
+    }
+    
+    return (
+      <HomePage
+        onLoginClick={() => setShowLogin(true)}
+        onServicesClick={() => setCurrentPage('services')}
+        onContactClick={() => setCurrentPage('contact')}
+      />
+    );
   }
 
   // Show loading state only on initial load
@@ -290,9 +413,9 @@ const App: React.FC = () => {
     );
   }
 
-  // Get current user and determine admin status
-  const currentUser = authService.getUser();
-  const isAdmin = !!(currentUser?.is_superuser);
+  // Use state for current user (refreshed automatically) or fallback to cached
+  const user = currentUser || authService.getUser();
+  const isAdmin = !!(user?.is_superuser);
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">

@@ -19,8 +19,8 @@ import { Client, Asset, Ticket, TicketStatus } from '../types';
 import { authService } from './auth';
 
 // API URL from environment variable (no hardcoded IPs)
-// Default to localhost for development
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Default to server IP for development when accessed from network
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://10.0.1.122:8000';
 
 // Helper function for API calls
 async function apiCall<T>(
@@ -34,10 +34,14 @@ async function apiCall<T>(
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
         ...authHeaders,
         ...options.headers,
       },
       ...options,
+      cache: 'no-store', // Prevent browser caching
       // Add timeout to prevent hanging (using AbortController for better compatibility)
       signal: (() => {
         const controller = new AbortController();

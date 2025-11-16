@@ -41,3 +41,11 @@ export interface Ticket {
 }
 
 export type View = 'dashboard' | 'clients' | 'tickets' | 'assets' | 'ai-assistant' | 'users';
+
+export interface Service {
+  id: number;
+  title: string;
+  description: string;
+  imageUrl: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+}
