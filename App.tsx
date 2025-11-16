@@ -66,15 +66,18 @@ const App: React.FC = () => {
             console.warn('No user data returned from API');
             authService.logout();
             setIsAuthenticated(false);
+            setLoading(false);
           }
         } catch (err) {
           console.error('Auth check error:', err);
           // Token invalid, clear auth
           authService.logout();
           setIsAuthenticated(false);
+          setLoading(false);
         }
       } else {
         setIsAuthenticated(false);
+        setLoading(false);
       }
       setCheckingAuth(false);
     };
@@ -260,6 +263,11 @@ const App: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // Show login screen if not authenticated
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
   // Show loading state only on initial load
