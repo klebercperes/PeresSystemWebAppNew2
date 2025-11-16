@@ -31,6 +31,8 @@ const ContactPage: React.FC<ContactPageProps> = ({ onLoginClick, onServicesClick
   // Priority: phone_number (1300) > mobile_number
   const email = settings?.email_contact || 'info@peres.systems';
   const phone = settings?.phone_number || settings?.mobile_number || '+61 481 943 940';
+  // For placeholder, use mobile_number specifically
+  const mobilePlaceholder = settings?.mobile_number || '+61 481 943 940';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -162,7 +164,7 @@ const ContactPage: React.FC<ContactPageProps> = ({ onLoginClick, onServicesClick
                       value={formData.phone}
                       onChange={handleChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-                      placeholder="+61 481 943 940"
+                      placeholder={mobilePlaceholder}
                     />
                   </div>
 
