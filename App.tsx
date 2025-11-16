@@ -10,6 +10,7 @@ import { Login } from './components/Login';
 import HomePage from './components/HomePage';
 import ServicesPage from './pages/ServicesPage';
 import ContactPage from './pages/ContactPage';
+import WhatsAppChat from './components/WhatsAppChat';
 import { api } from './services/api';
 import { authService, User } from './services/auth';
 import { View, Client, Ticket, Asset } from './types';
@@ -389,39 +390,48 @@ const App: React.FC = () => {
       const serviceId = serviceIdMatch ? parseInt(serviceIdMatch[1]) : undefined;
       
       return (
-        <ServicesPage
-          onLoginClick={() => setShowLogin(true)}
-          onContactClick={() => setCurrentPage('contact')}
-          onHomeClick={() => setCurrentPage('home')}
-          serviceId={serviceId}
-        />
+        <>
+          <ServicesPage
+            onLoginClick={() => setShowLogin(true)}
+            onContactClick={() => setCurrentPage('contact')}
+            onHomeClick={() => setCurrentPage('home')}
+            serviceId={serviceId}
+          />
+          <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" />
+        </>
       );
     }
     
     if (currentPage === 'contact') {
       return (
-        <ContactPage
-          onLoginClick={() => setShowLogin(true)}
-          onServicesClick={() => setCurrentPage('services')}
-          onHomeClick={() => setCurrentPage('home')}
-        />
+        <>
+          <ContactPage
+            onLoginClick={() => setShowLogin(true)}
+            onServicesClick={() => setCurrentPage('services')}
+            onHomeClick={() => setCurrentPage('home')}
+          />
+          <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" />
+        </>
       );
     }
     
     return (
-      <HomePage
-        onLoginClick={() => setShowLogin(true)}
-        onServicesClick={(serviceId) => {
-          setCurrentPage('services');
-          // Set hash for scrolling to specific service
-          if (serviceId) {
-            setTimeout(() => {
-              window.location.hash = `service-${serviceId}`;
-            }, 100);
-          }
-        }}
-        onContactClick={() => setCurrentPage('contact')}
-      />
+      <>
+        <HomePage
+          onLoginClick={() => setShowLogin(true)}
+          onServicesClick={(serviceId) => {
+            setCurrentPage('services');
+            // Set hash for scrolling to specific service
+            if (serviceId) {
+              setTimeout(() => {
+                window.location.hash = `service-${serviceId}`;
+              }, 100);
+            }
+          }}
+          onContactClick={() => setCurrentPage('contact')}
+        />
+        <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" />
+      </>
     );
   }
 
