@@ -35,7 +35,7 @@ const ClientModal: React.FC<ClientModalProps> = ({ client, onClose, onSubmit }) 
             <form onSubmit={handleSubmit}>
                 <div className="space-y-4">
                      <div>
-                        <label htmlFor="companyName" className="block text-sm font-medium text-gray-300">Company Name</label>
+                        <label htmlFor="companyName" className="block text-sm font-medium text-gray-300">Client</label>
                         <input type="text" name="companyName" id="companyName" value={formData.companyName} onChange={handleChange} required className="mt-1 block w-full bg-neutral text-white border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm p-2" />
                     </div>
                     <div>

@@ -176,6 +176,12 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
           </div>
         )}
 
+        {users.length === 0 && !loading && (
+          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+            <p>No users found. If you just logged in, try refreshing the page.</p>
+          </div>
+        )}
+
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
@@ -192,7 +198,14 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                      No users found
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((user) => (
                   <tr
                     key={user.id}
                     className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
@@ -235,14 +248,16 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
                     <td className="px-6 py-4">
                       <button
                         onClick={() => openModal('resetPassword', user)}
-                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
                         title="Reset Password"
                       >
-                        <EditIcon />
+                        <EditIcon className="w-4 h-4 mr-1.5" />
+                        Reset Password
                       </button>
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>

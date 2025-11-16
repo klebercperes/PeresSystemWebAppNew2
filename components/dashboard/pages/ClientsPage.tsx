@@ -66,7 +66,7 @@ const ClientsPage: React.FC<ClientsPageProps> = ({ clients, onAddClient, onUpdat
                     <table className="w-full text-sm text-left text-gray-400">
                         <thead className="text-xs uppercase bg-neutral text-gray-300">
                             <tr>
-                                <th scope="col" className="px-6 py-3">Company Name</th>
+                                <th scope="col" className="px-6 py-3">Client</th>
                                 <th scope="col" className="px-6 py-3">Contact Person</th>
                                 <th scope="col" className="px-6 py-3">Email</th>
                                 <th scope="col" className="px-6 py-3">Phone</th>

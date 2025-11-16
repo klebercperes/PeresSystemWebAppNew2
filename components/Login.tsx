@@ -62,9 +62,16 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
     setError('');
     setForgotPasswordMessage('');
+    
+    if (!forgotPasswordEmail || !forgotPasswordEmail.includes('@')) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
     setLoading(true);
 
     try {
+      console.log('Sending password reset request for:', forgotPasswordEmail);
       const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: {
@@ -74,15 +81,19 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       });
 
       const data = await response.json();
+      console.log('Password reset response:', data);
       
       if (!response.ok) {
         throw new Error(data.detail || 'Failed to send password reset email');
       }
 
-      setForgotPasswordMessage(data.message || 'Password reset email sent. Please check your inbox.');
+      setForgotPasswordMessage(data.message || 'If an account with that email exists, a password reset link has been sent. Please check your inbox.');
       setForgotPasswordEmail('');
+      setError('');
     } catch (err) {
+      console.error('Password reset error:', err);
       setError(err instanceof Error ? err.message : 'Failed to send password reset email');
+      setForgotPasswordMessage('');
     } finally {
       setLoading(false);
     }
@@ -228,6 +239,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 Reset Password
               </h3>
               <form onSubmit={handleForgotPassword}>
+                {error && (
+                  <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    {error}
+                  </div>
+                )}
                 {forgotPasswordMessage && (
                   <div className="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
                     {forgotPasswordMessage}

@@ -51,11 +51,24 @@ const App: React.FC = () => {
     const checkAuth = async () => {
       if (authService.isAuthenticated()) {
         try {
-          // Verify token is still valid
-          await authService.fetchCurrentUser();
-          setIsAuthenticated(true);
-          refreshData();
+          // Verify token is still valid and get fresh user data
+          const user = await authService.getCurrentUser();
+          console.log('Fetched user data:', user);
+          if (user) {
+            setIsAuthenticated(true);
+            // Don't wait for refreshData - let it load in background
+            refreshData().catch(err => {
+              console.error('Error refreshing data:', err);
+              setError('Failed to load data. Please refresh the page.');
+              setLoading(false);
+            });
+          } else {
+            console.warn('No user data returned from API');
+            authService.logout();
+            setIsAuthenticated(false);
+          }
         } catch (err) {
+          console.error('Auth check error:', err);
           // Token invalid, clear auth
           authService.logout();
           setIsAuthenticated(false);
@@ -68,8 +81,10 @@ const App: React.FC = () => {
     checkAuth();
   }, []);
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = async () => {
     setIsAuthenticated(true);
+    // Fetch fresh user data to ensure is_superuser is loaded
+    await authService.getCurrentUser();
     refreshData();
   };
 
@@ -251,6 +266,18 @@ const App: React.FC = () => {
     }
   };
 
+  // Show loading state only on initial load (and not if we're checking auth)
+  if (checkingAuth) {
+    return (
+      <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Show loading state only on initial load
   if (loading && clients.length === 0 && tickets.length === 0 && assets.length === 0 && !error) {
     return (
@@ -260,10 +287,20 @@ const App: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 text-lg">Loading application data...</p>
           <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">Connecting to API at {import.meta.env.VITE_API_URL || 'http://localhost:8000'}</p>
           <p className="text-xs text-gray-400 dark:text-gray-600 mt-4">If this takes too long, check the browser console (F12)</p>
+          <button 
+            onClick={() => { setLoading(false); setError('Loading timeout - please refresh'); }}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Cancel Loading
+          </button>
         </div>
       </div>
     );
   }
+
+  // Get current user and determine admin status
+  const currentUser = authService.getUser();
+  const isAdmin = !!(currentUser?.is_superuser);
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
@@ -271,7 +308,7 @@ const App: React.FC = () => {
         currentView={currentView} 
         onNavigate={setCurrentView} 
         onLogout={handleLogout}
-        isAdmin={authService.getUser()?.is_superuser || false}
+        isAdmin={isAdmin}
       />
       <main className="flex-1 p-6 md:p-10 overflow-y-auto">
         {error && (

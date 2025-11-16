@@ -17,6 +17,9 @@ export interface User {
   email: string;
   full_name?: string;
   is_active: boolean;
+  is_superuser?: boolean;
+  role?: string;
+  email_verified?: boolean;
 }
 
 class AuthService {
@@ -66,12 +69,18 @@ class AuthService {
       }
 
       const user: User = await response.json();
+      console.log('User data from API:', user);
       this.setUser(user);
       return user;
     } catch (error) {
       console.error('Error fetching user:', error);
       return null;
     }
+  }
+
+  // Alias for getCurrentUser (some code uses fetchCurrentUser)
+  async fetchCurrentUser(): Promise<User | null> {
+    return this.getCurrentUser();
   }
 
   setToken(token: string): void {
