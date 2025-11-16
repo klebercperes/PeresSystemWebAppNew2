@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getBusinessSettings, BusinessSettings } from '../services/businessSettings';
 
 interface Message {
   id: string;
@@ -8,23 +9,44 @@ interface Message {
 }
 
 interface WhatsAppChatProps {
-  phoneNumber: string;
-  businessName: string;
+  phoneNumber?: string;
+  businessName?: string;
+  useBusinessSettings?: boolean;
 }
 
-const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ phoneNumber, businessName }) => {
+const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ phoneNumber, businessName, useBusinessSettings = false }) => {
+  const [settings, setSettings] = useState<BusinessSettings | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: `Hello! Welcome to ${businessName}. How can we help you today?`,
-      sender: 'business',
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (useBusinessSettings) {
+      getBusinessSettings().then(setSettings);
+    }
+  }, [useBusinessSettings]);
+
+  // Get values from settings or props
+  // WhatsApp always uses mobile_number (not phone_number/1300)
+  const displayPhoneNumber = useBusinessSettings && settings?.mobile_number 
+    ? settings.mobile_number.replace(/\D/g, '') 
+    : phoneNumber || '61481943940';
+  const displayBusinessName = useBusinessSettings && settings?.business_name 
+    ? settings.business_name 
+    : businessName || 'Peres Systems';
+
+  useEffect(() => {
+    if (displayBusinessName) {
+      setMessages([{
+        id: '1',
+        text: `Hello! Welcome to ${displayBusinessName}. How can we help you today?`,
+        sender: 'business',
+        timestamp: new Date(),
+      }]);
+    }
+  }, [displayBusinessName]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -56,7 +78,7 @@ const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ phoneNumber, businessName }
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          phone: phoneNumber,
+          phone: displayPhoneNumber || '61481943940',
           message: inputMessage,
         }),
       });
@@ -141,7 +163,7 @@ const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ phoneNumber, businessName }
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold">{businessName}</h3>
+                <h3 className="font-semibold">{displayBusinessName}</h3>
                 <p className="text-xs text-green-100">Typically replies within minutes</p>
               </div>
             </div>

@@ -1,10 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { getBusinessSettings, BusinessSettings } from '../services/businessSettings';
 
 interface CTASectionProps {
   onGetStartedClick?: () => void;
 }
 
 const CTASection: React.FC<CTASectionProps> = ({ onGetStartedClick }) => {
+  const [settings, setSettings] = useState<BusinessSettings | null>(null);
+
+  useEffect(() => {
+    getBusinessSettings().then(setSettings);
+  }, []);
+
+  // Use business settings or fallback to defaults
+  // Priority: phone_number (1300) > mobile_number
+  const email = settings?.email_contact || 'info@peres.systems';
+  const phone = settings?.phone_number || settings?.mobile_number || '+61 481 943 940';
+
   return (
     <section className="py-16 md:py-24 bg-blue-900 text-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -24,14 +36,14 @@ const CTASection: React.FC<CTASectionProps> = ({ onGetStartedClick }) => {
             </button>
           ) : (
             <a
-              href="mailto:info@peres.systems"
+              href={`mailto:${email}`}
               className="inline-block bg-yellow-400 text-gray-900 font-bold py-3 px-8 rounded-full text-lg hover:bg-yellow-500 transition duration-300 transform hover:scale-105 shadow-lg"
             >
               Contact Us
             </a>
           )}
           <a
-            href="tel:+61481943940"
+            href={`tel:${phone.replace(/\s/g, '')}`}
             className="inline-block bg-white text-blue-900 font-bold py-3 px-8 rounded-full text-lg hover:bg-gray-100 transition duration-300 transform hover:scale-105 shadow-lg"
           >
             Call Now

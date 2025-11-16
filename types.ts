@@ -40,7 +40,7 @@ export interface Ticket {
   resolvedDate?: string;
 }
 
-export type View = 'dashboard' | 'clients' | 'tickets' | 'assets' | 'ai-assistant' | 'users';
+export type View = 'dashboard' | 'clients' | 'tickets' | 'assets' | 'ai-assistant' | 'users' | 'business-settings';
 
 export interface Service {
   id: number;

@@ -6,6 +6,7 @@ import { TicketManager } from './components/TicketManager';
 import { AssetManager } from './components/AssetManager';
 import { AiAssistant } from './components/AiAssistant';
 import { UserManager } from './components/UserManager';
+import BusinessSettings from './components/BusinessSettings';
 import { Login } from './components/Login';
 import HomePage from './components/HomePage';
 import ServicesPage from './pages/ServicesPage';
@@ -342,7 +343,15 @@ const App: React.FC = () => {
       case 'ai-assistant':
         return <AiAssistant />;
       case 'users':
+        if (!isAdmin) {
+          return <div className="text-center text-red-600">Access Denied</div>;
+        }
         return <UserManager currentUser={user} />;
+      case 'business-settings':
+        if (!isAdmin) {
+          return <div className="text-center text-red-600">Access Denied</div>;
+        }
+        return <BusinessSettings />;
       default:
         return <Dashboard clients={clients} tickets={tickets} assets={assets} />;
     }
@@ -397,7 +406,7 @@ const App: React.FC = () => {
             onHomeClick={() => setCurrentPage('home')}
             serviceId={serviceId}
           />
-          <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" />
+          <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" useBusinessSettings={true} />
         </>
       );
     }
@@ -410,7 +419,7 @@ const App: React.FC = () => {
             onServicesClick={() => setCurrentPage('services')}
             onHomeClick={() => setCurrentPage('home')}
           />
-          <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" />
+          <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" useBusinessSettings={true} />
         </>
       );
     }
@@ -430,7 +439,7 @@ const App: React.FC = () => {
           }}
           onContactClick={() => setCurrentPage('contact')}
         />
-        <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" />
+        <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" useBusinessSettings={true} />
       </>
     );
   }

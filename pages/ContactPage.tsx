@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import BackToTop from '../components/BackToTop';
+import { getBusinessSettings, BusinessSettings } from '../services/businessSettings';
 
 interface ContactPageProps {
   onLoginClick: () => void;
@@ -10,6 +11,7 @@ interface ContactPageProps {
 }
 
 const ContactPage: React.FC<ContactPageProps> = ({ onLoginClick, onServicesClick, onHomeClick }) => {
+  const [settings, setSettings] = useState<BusinessSettings | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -20,6 +22,15 @@ const ContactPage: React.FC<ContactPageProps> = ({ onLoginClick, onServicesClick
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    getBusinessSettings().then(setSettings);
+  }, []);
+
+  // Use business settings or fallback to defaults
+  // Priority: phone_number (1300) > mobile_number
+  const email = settings?.email_contact || 'info@peres.systems';
+  const phone = settings?.phone_number || settings?.mobile_number || '+61 481 943 940';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -209,16 +220,16 @@ const ContactPage: React.FC<ContactPageProps> = ({ onLoginClick, onServicesClick
                       <svg className="w-5 h-5 mr-3 text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
-                      <a href="mailto:info@peres.systems" className="hover:text-blue-900">
-                        info@peres.systems
+                      <a href={`mailto:${email}`} className="hover:text-blue-900">
+                        {email}
                       </a>
                     </div>
                     <div className="flex items-center">
                       <svg className="w-5 h-5 mr-3 text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
-                      <a href="tel:+61481943940" className="hover:text-blue-900">
-                        +61 481 943 940
+                      <a href={`tel:${phone.replace(/\s/g, '')}`} className="hover:text-blue-900">
+                        {phone}
                       </a>
                     </div>
                   </div>
