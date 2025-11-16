@@ -16,10 +16,10 @@ const TICKET_STATUSES: TicketStatus[] = ['Open', 'In Progress', 'Closed'];
 const TicketModal: React.FC<TicketModalProps> = ({ ticket, clients, assets, onClose, onSubmit }) => {
     
     const [clientId, setClientId] = useState(ticket?.clientId || (clients[0]?.id || ''));
-    const [contactName, setContactName] = useState(ticket?.contact.name || '');
-    const [contactEmail, setContactEmail] = useState(ticket?.contact.email || '');
-    const [contactPhone, setContactPhone] = useState(ticket?.contact.phone || '');
-    const [contactMobile, setContactMobile] = useState(ticket?.contact.mobile || '');
+    const [contactName, setContactName] = useState(ticket?.contact?.name || '');
+    const [contactEmail, setContactEmail] = useState(ticket?.contact?.email || '');
+    const [contactPhone, setContactPhone] = useState(ticket?.contact?.phone || '');
+    const [contactMobile, setContactMobile] = useState(ticket?.contact?.mobile || '');
     const [subject, setSubject] = useState(ticket?.subject || '');
     const [assetId, setAssetId] = useState(ticket?.assetId || '');
     const [status, setStatus] = useState<TicketStatus>(ticket?.status || 'Open');
@@ -29,21 +29,63 @@ const TicketModal: React.FC<TicketModalProps> = ({ ticket, clients, assets, onCl
 
     const clientAssets = useMemo(() => assets.filter(a => a.clientId === clientId), [assets, clientId]);
 
+    // Initialize form data when ticket changes (for editing)
+    useEffect(() => {
+        if (ticket) {
+            // Editing existing ticket - load all data from ticket
+            setClientId(ticket.clientId || '');
+            setSubject(ticket.subject || '');
+            setAssetId(ticket.assetId || '');
+            setStatus(ticket.status || 'Open');
+            setDescription(ticket.description || '');
+            setNotes(ticket.notes || '');
+            
+            // Load contact info from ticket, or from client if ticket contact is empty
+            if (ticket.contact && (ticket.contact.name || ticket.contact.email)) {
+                setContactName(ticket.contact.name || '');
+                setContactEmail(ticket.contact.email || '');
+                setContactPhone(ticket.contact.phone || '');
+                setContactMobile(ticket.contact.mobile || '');
+            } else {
+                // If ticket has no contact info, load from client
+                const client = clients.find(c => c.id === ticket.clientId);
+                if (client) {
+                    setContactName(client.contactPerson || '');
+                    setContactEmail(client.email || '');
+                    setContactPhone(client.phone || '');
+                }
+            }
+        } else {
+            // Creating new ticket - reset to defaults
+            setClientId(clients[0]?.id || '');
+            setSubject('');
+            setAssetId('');
+            setStatus('Open');
+            setDescription('');
+            setNotes('');
+            setContactName('');
+            setContactEmail('');
+            setContactPhone('');
+            setContactMobile('');
+        }
+    }, [ticket, clients]);
+
+    // Update contact info when client changes (for both new and edit)
     useEffect(() => {
         const client = clients.find(c => c.id === clientId);
         if (client) {
-            // Pre-fill contact from client if creating a new ticket
-            if (!ticket) {
-                setContactName(client.contactPerson);
-                setContactEmail(client.email);
-                setContactPhone(client.phone);
+            // If contact fields are empty or we're creating a new ticket, pre-fill from client
+            if (!ticket || !contactName || !contactEmail) {
+                setContactName(client.contactPerson || '');
+                setContactEmail(client.email || '');
+                setContactPhone(client.phone || '');
             }
         }
         // Reset asset if client changes and selected asset doesn't belong to them
         if (!clientAssets.some(a => a.id === assetId)) {
             setAssetId('');
         }
-    }, [clientId, clients, ticket, clientAssets, assetId]);
+    }, [clientId, clients, clientAssets, assetId, ticket, contactName, contactEmail]);
 
     const handleRemoveNewAttachment = (indexToRemove: number) => {
         setNewAttachments(prev => prev.filter((_, index) => index !== indexToRemove));
@@ -88,9 +130,18 @@ const TicketModal: React.FC<TicketModalProps> = ({ ticket, clients, assets, onCl
                 
                 <div>
                     <label htmlFor="clientId" className="block text-sm font-medium text-gray-300">Client</label>
-                    <select id="clientId" value={clientId} onChange={(e) => setClientId(e.target.value)} required className="mt-1 block w-full bg-neutral text-white border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm p-2">
+                    <select 
+                        id="clientId" 
+                        value={clientId} 
+                        onChange={(e) => setClientId(e.target.value)} 
+                        required 
+                        className="mt-1 block w-full bg-neutral text-white border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm p-2"
+                    >
+                        <option value="">Select a client</option>
                         {clients.map(client => (
-                            <option key={client.id} value={client.id}>{client.companyName}</option>
+                            <option key={client.id} value={client.id}>
+                                {client.companyName || client.name || client.email}
+                            </option>
                         ))}
                     </select>
                 </div>

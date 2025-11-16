@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Header from '../Header';
 import Footer from '../Footer';
 import { PieChart, BarChart } from './customer/charts';
@@ -6,6 +6,7 @@ import CustomerTicketModal from './customer/CustomerTicketModal';
 import ContactModal from './customer/ContactModal';
 import WhatsAppChatbox from './customer/WhatsAppChatbox';
 import { WhatsAppIcon, SupportIcon, EmailIcon, CloseIcon } from '../icons';
+import { authService } from '../../services/auth';
 import type { Ticket, Asset, Client, ChartDataItem } from '../../types';
 
 interface CustomerDashboardProps {
@@ -18,18 +19,40 @@ interface CustomerDashboardProps {
     contactFormEmailTarget: string;
 }
 
-// In a real app, you'd get the logged-in customer's ID. We'll hardcode it.
-const LOGGED_IN_CUSTOMER_ID = 'c1'; 
-
 const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ onLogout, clients, tickets, assets, onAddTicket, teamWhatsAppNumber, contactFormEmailTarget }) => {
     const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
     const [isChatboxOpen, setIsChatboxOpen] = useState(false);
     const [isContactFlyoutOpen, setIsContactFlyoutOpen] = useState(false);
+    const [customerClient, setCustomerClient] = useState<Client | undefined>(undefined);
     
-    const customerClient = clients.find(c => c.id === LOGGED_IN_CUSTOMER_ID);
-    const customerTickets = tickets.filter(ticket => ticket.clientId === LOGGED_IN_CUSTOMER_ID);
-    const customerAssets = assets.filter(asset => asset.clientId === LOGGED_IN_CUSTOMER_ID);
+    // Find customer client by matching logged-in user's email
+    useEffect(() => {
+        const findCustomerClient = async () => {
+            const user = await authService.getCurrentUser();
+            if (user && user.email) {
+                // Find client by matching email
+                const client = clients.find(c => c.email.toLowerCase() === user.email.toLowerCase());
+                if (client) {
+                    setCustomerClient(client);
+                } else {
+                    // Fallback: try to find by first client if user email doesn't match
+                    // This is a temporary solution until client-user linking is implemented
+                    console.warn('Could not find client for user email:', user.email);
+                    if (clients.length > 0) {
+                        setCustomerClient(clients[0]);
+                    }
+                }
+            } else if (clients.length > 0) {
+                // Fallback if no user info
+                setCustomerClient(clients[0]);
+            }
+        };
+        findCustomerClient();
+    }, [clients]);
+    
+    const customerTickets = customerClient ? tickets.filter(ticket => ticket.clientId === customerClient.id) : [];
+    const customerAssets = customerClient ? assets.filter(asset => asset.clientId === customerClient.id) : [];
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -68,19 +91,35 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ onLogout, clients
     }, [customerAssets]);
 
     const handleOpenTicket = (ticketData: Omit<Ticket, 'id' | 'createdAt' | 'clientId' | 'contact' | 'status'>) => {
-        if (!customerClient) return;
-        const newTicket: Omit<Ticket, 'id' | 'createdAt'> = {
-            ...ticketData,
-            clientId: customerClient.id,
-            contact: {
-                name: customerClient.contactPerson,
-                email: customerClient.email,
-                phone: customerClient.phone
-            },
-            status: 'Open'
-        };
-        onAddTicket(newTicket);
-        setIsTicketModalOpen(false);
+        if (!customerClient) {
+            alert('Error: Could not find your client account. Please contact support.');
+            console.error('No customer client found. Available clients:', clients);
+            return;
+        }
+        
+        if (!ticketData.subject || !ticketData.description) {
+            alert('Please fill in both subject and description.');
+            return;
+        }
+        
+        try {
+            const newTicket: Omit<Ticket, 'id' | 'createdAt'> = {
+                ...ticketData,
+                clientId: customerClient.id,
+                contact: {
+                    name: customerClient.contactPerson || customerClient.name || '',
+                    email: customerClient.email,
+                    phone: customerClient.phone || ''
+                },
+                status: 'Open'
+            };
+            console.log('Submitting ticket:', newTicket);
+            onAddTicket(newTicket);
+            setIsTicketModalOpen(false);
+        } catch (error) {
+            console.error('Error submitting ticket:', error);
+            alert('Error submitting ticket. Please try again.');
+        }
     }
 
     const handleContactSubmit = (message: string) => {

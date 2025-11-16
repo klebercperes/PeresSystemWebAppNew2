@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { UserRole } from '../types';
 import { GoogleIcon, PeresSystemsLogo } from '../components/icons';
 import { authService, type LoginCredentials } from '../services/auth';
+
+// Google OAuth client ID - should be in environment variable
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 interface LoginPageProps {
   onLogin: (role: UserRole, token: string) => void;
@@ -13,6 +16,91 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToSignup }) =>
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Load Google Sign-In script
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) {
+      console.warn('Google Client ID not configured. Google login will not work.');
+      return;
+    }
+
+    // Load Google Identity Services script
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCallback,
+        });
+      }
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup
+      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
+  }, []);
+
+  const handleGoogleCallback = async (response: any) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Send Google ID token to backend
+      const authResponse = await authService.googleLogin(response.credential);
+      
+      // Get user info to determine role
+      const user = await authService.getCurrentUser();
+      
+      if (!user) {
+        throw new Error('Failed to get user information');
+      }
+
+      // Determine role from user object
+      const role: UserRole = (user.role === 'team' ? 'team' : 'customer') as UserRole;
+      
+      // Store authentication state
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('userRole', role);
+      
+      // Call parent handler
+      onLogin(role, authResponse.access_token);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Google login failed. Please try again.';
+      setError(errorMessage);
+      console.error('Google login error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = () => {
+    if (!GOOGLE_CLIENT_ID) {
+      setError('Google login is not configured. Please contact support.');
+      return;
+    }
+
+    if (window.google && window.google.accounts) {
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          // Fallback: trigger sign-in directly
+          window.google.accounts.id.renderButton(
+            document.getElementById('google-signin-button') as HTMLElement,
+            { theme: 'outline', size: 'large' }
+          );
+        }
+      });
+    } else {
+      setError('Google Sign-In is not available. Please refresh the page.');
+    }
+  };
 
   const handleTeamLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,9 +119,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToSignup }) =>
       // Get user info to determine role
       const user = await authService.getCurrentUser();
       
-      // Determine role based on user data or default to 'team'
-      // You may need to adjust this based on your user model
-      const role: UserRole = 'team'; // Default to team for now
+      if (!user) {
+        throw new Error('Failed to get user information');
+      }
+
+      // Determine role from user object (not hardcoded)
+      const role: UserRole = (user.role === 'team' ? 'team' : 'customer') as UserRole;
       
       // Store authentication state
       localStorage.setItem('isAuthenticated', 'true');
@@ -48,12 +139,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToSignup }) =>
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleGoogleLogin = () => {
-    // Google OAuth integration would go here
-    // For now, this is a placeholder
-    setError('Google login not yet implemented. Please use team member login.');
   };
 
   return (
@@ -75,17 +160,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToSignup }) =>
         {/* Customer Login */}
         <div className="space-y-4">
             <h3 className="text-lg font-medium text-center text-neutral dark:text-gray-300">Customer Portal</h3>
-            <button
-                onClick={handleGoogleLogin}
-                type="button"
-                disabled={isLoading}
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#4285F4] hover:bg-[#357ae8] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4285F4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                    <GoogleIcon className="h-5 w-5 bg-white rounded-full p-0.5" />
-                </span>
-                Sign in with Google
-            </button>
+            {GOOGLE_CLIENT_ID ? (
+              <>
+                <div id="google-signin-button" className="flex justify-center"></div>
+                <button
+                    onClick={handleGoogleLogin}
+                    type="button"
+                    disabled={isLoading}
+                    className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#4285F4] hover:bg-[#357ae8] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4285F4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <span className="absolute left-0 inset-y-0 flex items-center pl-3">
+                        <GoogleIcon className="h-5 w-5 bg-white rounded-full p-0.5" />
+                    </span>
+                    Sign in with Google
+                </button>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500 text-center">Google login not configured</p>
+            )}
         </div>
 
         <div className="relative">
@@ -159,5 +251,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToSignup }) =>
     </div>
   );
 };
+
+// Extend Window interface for Google types
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: { client_id: string; callback: (response: any) => void }) => void;
+          prompt: (callback: (notification: any) => void) => void;
+          renderButton: (element: HTMLElement, config: any) => void;
+        };
+      };
+    };
+  }
+}
 
 export default LoginPage;

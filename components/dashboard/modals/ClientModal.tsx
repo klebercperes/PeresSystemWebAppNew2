@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Client } from '../../../types';
 import ModalWrapper from './ModalWrapper';
 
@@ -10,11 +10,32 @@ interface ClientModalProps {
 
 const ClientModal: React.FC<ClientModalProps> = ({ client, onClose, onSubmit }) => {
     const [formData, setFormData] = useState({
-        companyName: client?.companyName || '',
-        contactPerson: client?.contactPerson || '',
-        email: client?.email || '',
-        phone: client?.phone || '',
+        companyName: '',
+        contactPerson: '',
+        email: '',
+        phone: '',
     });
+
+    // Initialize form data when client changes (for editing)
+    useEffect(() => {
+        if (client) {
+            // Editing existing client - load all data
+            setFormData({
+                companyName: client.companyName || '',
+                contactPerson: client.contactPerson || '',
+                email: client.email || '',
+                phone: client.phone || '',
+            });
+        } else {
+            // Creating new client - reset to defaults
+            setFormData({
+                companyName: '',
+                contactPerson: '',
+                email: '',
+                phone: '',
+            });
+        }
+    }, [client]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -23,9 +44,16 @@ const ClientModal: React.FC<ClientModalProps> = ({ client, onClose, onSubmit }) 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.companyName || !formData.contactPerson || !formData.email) {
+            alert('Please fill in all required fields (Company Name, Contact Person, Email).');
+            return;
+        }
+        
         if (client) {
+            // Editing - include client ID
             onSubmit({ ...client, ...formData });
         } else {
+            // Creating new client
             onSubmit(formData);
         }
     };
