@@ -1,3 +1,20 @@
+/**
+ * API Service - Centralized Backend Communication
+ * 
+ * ⚠️ IMPORTANT: This is the ONLY file that should make direct API calls to the backend.
+ * All components MUST use the `api` object exported from this file.
+ * 
+ * 📚 Documentation:
+ * - See docs/AI_ASSISTANT_GUIDE.md for architecture and best practices
+ * - See docs/API_REFERENCE.md for complete method reference
+ * 
+ * 🎯 Key Rules:
+ * 1. NEVER make direct fetch() calls in components
+ * 2. ALL backend communication goes through this file
+ * 3. Always use TypeScript types from types.ts
+ * 4. Follow the existing patterns when adding new methods
+ */
+
 import { Client, Asset, Ticket, TicketStatus } from '../types';
 import { authService } from './auth';
 
