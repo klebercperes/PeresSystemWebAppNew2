@@ -1,0 +1,78 @@
+I'm working on the Peres Systems frontend codebase and need your help. This is my first time using you with this project, so please follow these instructions carefully.
+
+## Step 1: Read the Documentation
+
+Please read and understand these documentation files from the repository:
+
+1. **docs/AI_ASSISTANT_GUIDE.md** - This is the MAIN guide. It explains:
+   - The architecture and code structure
+   - Critical rules (especially about the API layer)
+   - How to make changes without breaking things
+   - Best practices and patterns
+
+2. **docs/API_REFERENCE.md** - Complete reference for:
+   - All available API methods
+   - TypeScript type definitions
+   - Error handling examples
+   - How to use each method
+
+3. **docs/README.md** - Documentation index and quick start
+
+4. **GEMINI_SETUP.md** - Setup instructions and example prompts
+
+5. **GEMINI_TEST_PROMPT.md** - Testing instructions
+
+## Step 2: Understand the Architecture
+
+Key points you MUST understand:
+
+1. **API Layer Abstraction**: 
+   - ALL backend communication goes through `services/api.ts`
+   - Components MUST NEVER make direct `fetch()` calls
+   - This is critical to prevent breaking changes
+
+2. **File Structure**:
+   - `services/api.ts` - ALL API calls (the only file that talks to backend)
+   - `services/auth.ts` - Authentication only
+   - `types.ts` - TypeScript type definitions
+   - `components/` - UI components (use api object, no direct fetch)
+   - `pages/` - Page components (use api object, no direct fetch)
+
+3. **Pattern to Follow**:
+   ```
+   Component → services/api.ts → Backend API → Database
+   ```
+
+## Step 3: Test Task
+
+After reading the documentation, please help me with this simple test:
+
+**Task**: Review the `components/ClientManager.tsx` file and verify it follows the architecture rules:
+1. Does it use the `api` object from `services/api.ts`?
+2. Does it avoid direct `fetch()` calls?
+3. Does it use TypeScript types from `types.ts`?
+4. Does it handle errors properly?
+
+Please provide:
+- A brief analysis of the file
+- Confirmation that it follows the rules
+- Any suggestions for improvement (if needed)
+
+## Step 4: Confirm Understanding
+
+Before proceeding, please confirm you understand:
+- ✅ The API layer must never be bypassed
+- ✅ All components use `api` object from `services/api.ts`
+- ✅ TypeScript types are in `types.ts`
+- ✅ Error handling is important
+- ✅ You'll follow existing patterns when making changes
+
+## Important Notes
+
+- The repository is at: `https://github.com/klebercperes/PeresSystemWebAppNew2`
+- All documentation is in the `docs/` folder
+- The main API service is in `services/api.ts`
+- Never suggest or create code that bypasses the API layer
+
+Please start by reading the documentation files listed above, then complete the test task.
+
