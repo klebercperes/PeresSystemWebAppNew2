@@ -210,10 +210,19 @@ const App: React.FC = () => {
 
   const handleLoginSuccess = async () => {
     setIsAuthenticated(true);
-    // Fetch fresh user data to ensure is_superuser is loaded
-    const user = await authService.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
+    try {
+      // Fetch fresh user data after login (force refresh to get latest is_superuser status)
+      const user = await authService.getCurrentUser(true);
+      if (user) {
+        setCurrentUser(user);
+      }
+    } catch (err) {
+      console.error('Error fetching user after login:', err);
+      // If fetch fails, try using cached user as fallback
+      const cachedUser = authService.getUser();
+      if (cachedUser) {
+        setCurrentUser(cachedUser);
+      }
     }
     // Don't include user refresh here to avoid duplicate calls
     refreshData(true, true, false);

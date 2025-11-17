@@ -53,7 +53,8 @@ class AuthService {
 
     const data: AuthResponse = await response.json();
     this.setToken(data.access_token);
-    await this.fetchCurrentUser();
+    // Don't fetch user here - let handleLoginSuccess do it to avoid duplicate calls
+    // The user will be fetched in handleLoginSuccess
     return data;
   }
 
@@ -74,7 +75,7 @@ class AuthService {
     return await response.json();
   }
 
-  async fetchCurrentUser(): Promise<User> {
+  async fetchCurrentUser(retryCount: number = 0): Promise<User> {
     const token = this.getToken();
     if (!token) {
       throw new Error('No token available');
@@ -87,7 +88,19 @@ class AuthService {
       },
     });
 
+    // Handle rate limiting (429) with retry
+    if (response.status === 429 && retryCount < 2) {
+      // Wait 1 second before retrying (exponential backoff)
+      const delay = Math.pow(2, retryCount) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return this.fetchCurrentUser(retryCount + 1);
+    }
+
     if (!response.ok) {
+      // Don't logout on 429 errors - just throw
+      if (response.status === 429) {
+        throw new Error('Too many requests. Please wait a moment and try again.');
+      }
       this.logout();
       throw new Error('Failed to fetch user');
     }
@@ -98,7 +111,20 @@ class AuthService {
   }
 
   // Alias for fetchCurrentUser (for backward compatibility)
-  async getCurrentUser(): Promise<User> {
+  // Checks cache first, then fetches if needed
+  async getCurrentUser(forceRefresh: boolean = false): Promise<User> {
+    // If we have a cached user and not forcing refresh, return it
+    if (!forceRefresh) {
+      const cachedUser = this.getUser();
+      if (cachedUser) {
+        // Still fetch in background to ensure data is fresh, but return cached immediately
+        this.fetchCurrentUser().catch(err => {
+          console.warn('Background user fetch failed:', err);
+        });
+        return cachedUser;
+      }
+    }
+    // No cache or force refresh - fetch from API
     return this.fetchCurrentUser();
   }
 
@@ -118,7 +144,7 @@ class AuthService {
 
     const data: AuthResponse = await response.json();
     this.setToken(data.access_token);
-    await this.fetchCurrentUser();
+    // Don't fetch user here - let handleLoginSuccess do it to avoid duplicate calls
     return data;
   }
 
