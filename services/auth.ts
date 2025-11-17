@@ -129,18 +129,44 @@ class AuthService {
   }
 
   async googleLogin(credential: string): Promise<AuthResponse> {
+    if (!credential) {
+      throw new Error('Google credential is missing');
+    }
+    
+    const requestBody = { token: credential };
+    console.log('Google login request:', { hasToken: !!credential, tokenLength: credential.length });
+    
     const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ token: credential }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Google login failed' }));
-      const errorMessage = error.detail || error.message || 'Google login failed';
-      throw new Error(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
+      let errorMessage = 'Google login failed';
+      try {
+        const error = await response.json();
+        // Handle FastAPI validation errors (422)
+        if (error.detail) {
+          if (Array.isArray(error.detail)) {
+            // Validation errors come as an array
+            errorMessage = error.detail.map((e: any) => `${e.loc?.join('.')}: ${e.msg}`).join(', ');
+          } else if (typeof error.detail === 'string') {
+            errorMessage = error.detail;
+          } else {
+            errorMessage = JSON.stringify(error.detail);
+          }
+        } else if (error.message) {
+          errorMessage = error.message;
+        } else {
+          errorMessage = JSON.stringify(error);
+        }
+      } catch (e) {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     const data: AuthResponse = await response.json();
