@@ -134,12 +134,13 @@ class AuthService {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ credential }),
+      body: JSON.stringify({ token: credential }),
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Google login failed' }));
-      throw new Error(error.detail || 'Google login failed');
+      const errorMessage = error.detail || error.message || 'Google login failed';
+      throw new Error(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
     }
 
     const data: AuthResponse = await response.json();
