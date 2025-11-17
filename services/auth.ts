@@ -1,25 +1,32 @@
-// Auth service for FastAPI integration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://10.0.1.122:8000';
-
-export interface LoginCredentials {
-  username: string; // FastAPI uses 'username' field
-  password: string;
-}
-
-export interface AuthResponse {
-  access_token: string;
-  token_type: string;
-}
+// API URL from environment variable (no hardcoded IPs)
+// Default to localhost for development
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export interface User {
   id: string;
   username: string;
   email: string;
-  full_name?: string;
+  full_name: string | null;
   is_active: boolean;
-  is_superuser?: boolean;
-  role?: string;
-  email_verified?: boolean;
+  is_superuser: boolean;
+  created_at: string;
+}
+
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+export interface RegisterData {
+  username: string;
+  email: string;
+  password: string;
+  full_name?: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
 }
 
 class AuthService {
@@ -41,24 +48,22 @@ class AuthService {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Login failed' }));
-      throw new Error(error.detail || `Login failed: ${response.status}`);
+      throw new Error(error.detail || 'Login failed');
     }
 
     const data: AuthResponse = await response.json();
     this.setToken(data.access_token);
+    await this.fetchCurrentUser();
     return data;
   }
 
-  async register(data: { username: string; email: string; password: string; full_name?: string }): Promise<User> {
+  async register(data: RegisterData): Promise<User> {
     const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        ...data,
-        role: 'customer',  // Signups are always customers
-      }),
+      body: JSON.stringify(data),
     });
 
     if (!response.ok) {
@@ -66,83 +71,63 @@ class AuthService {
       throw new Error(error.detail || 'Registration failed');
     }
 
+    return await response.json();
+  }
+
+  async fetchCurrentUser(): Promise<User> {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error('No token available');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      this.logout();
+      throw new Error('Failed to fetch user');
+    }
+
     const user: User = await response.json();
     this.setUser(user);
     return user;
   }
 
-  async googleLogin(googleToken: string): Promise<AuthResponse> {
+  // Alias for fetchCurrentUser (for backward compatibility)
+  async getCurrentUser(): Promise<User> {
+    return this.fetchCurrentUser();
+  }
+
+  async googleLogin(credential: string): Promise<AuthResponse> {
     const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ token: googleToken }),
+      body: JSON.stringify({ credential }),
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Google login failed' }));
-      throw new Error(error.detail || `Google login failed: ${response.status}`);
+      throw new Error(error.detail || 'Google login failed');
     }
 
     const data: AuthResponse = await response.json();
     this.setToken(data.access_token);
+    await this.fetchCurrentUser();
     return data;
-  }
-
-  async getCurrentUser(): Promise<User | null> {
-    const token = this.getToken();
-    if (!token) return null;
-
-    try {
-      // Don't add query parameter for cache-busting - it causes CORS preflight
-      // Rely on Cache-Control headers instead
-      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-        },
-        cache: 'no-store',
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          this.logout();
-          return null;
-        }
-        // Handle rate limiting (429) - don't throw, just return null to avoid breaking the app
-        if (response.status === 429) {
-          // Rate limited - return cached user if available
-          return this.getUser();
-        }
-        throw new Error('Failed to get user');
-      }
-
-      const user: User = await response.json();
-      this.setUser(user);
-      return user;
-    } catch (error) {
-      // Silently handle errors - return cached user if available
-      return this.getUser();
-    }
-  }
-
-  // Alias for getCurrentUser (some code uses fetchCurrentUser)
-  async fetchCurrentUser(): Promise<User | null> {
-    return this.getCurrentUser();
-  }
-
-  setToken(token: string): void {
-    localStorage.setItem(this.tokenKey, token);
   }
 
   getToken(): string | null {
     return localStorage.getItem(this.tokenKey);
   }
 
-  setUser(user: User): void {
-    localStorage.setItem(this.userKey, JSON.stringify(user));
+  setToken(token: string): void {
+    localStorage.setItem(this.tokenKey, token);
   }
 
   getUser(): User | null {
@@ -155,11 +140,13 @@ class AuthService {
     }
   }
 
+  setUser(user: User): void {
+    localStorage.setItem(this.userKey, JSON.stringify(user));
+  }
+
   logout(): void {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userRole');
   }
 
   isAuthenticated(): boolean {
