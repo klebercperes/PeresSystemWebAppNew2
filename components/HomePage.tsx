@@ -10,7 +10,7 @@ import BackToTop from './BackToTop';
 
 interface HomePageProps {
   onLoginClick: () => void;
-  onServicesClick?: (serviceId?: number) => void;
+  onServicesClick?: (serviceId?: string) => void;
   onContactClick?: () => void;
 }
 
@@ -25,7 +25,7 @@ const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onServicesClick, onCo
     }
   };
 
-  const handleServiceClick = (serviceId: number) => {
+  const handleServiceClick = (serviceId: string) => {
     if (onServicesClick) {
       onServicesClick(serviceId);
     }

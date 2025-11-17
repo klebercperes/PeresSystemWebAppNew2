@@ -12,6 +12,7 @@ import HomePage from './components/HomePage';
 import ServicesPage from './pages/ServicesPage';
 import ContactPage from './pages/ContactPage';
 import WhatsAppChat from './components/WhatsAppChat';
+import Header from './components/Header';
 import { api } from './services/api';
 import { authService, User } from './services/auth';
 import { View, Client, Ticket, Asset } from './types';
@@ -29,6 +30,52 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [showLogin, setShowLogin] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'contact'>('home');
+  const [showPublicPages, setShowPublicPages] = useState<boolean>(false);
+
+  // URL routing: Read initial path from URL and handle browser back/forward
+  useEffect(() => {
+    const handlePathChange = () => {
+      const path = window.location.pathname;
+      if (path === '/services' || path.startsWith('/services/')) {
+        setCurrentPage('services');
+        setShowPublicPages(true);
+      } else if (path === '/contact') {
+        setCurrentPage('contact');
+        setShowPublicPages(true);
+      } else if (path === '/home' || path === '/') {
+        setCurrentPage('home');
+        setShowPublicPages(true);
+      }
+    };
+
+    // Initial path check
+    handlePathChange();
+
+    // Listen for browser back/forward buttons
+    window.addEventListener('popstate', handlePathChange);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePathChange);
+    };
+  }, []);
+
+  // Update URL when page changes
+  const updateURL = (page: 'home' | 'services' | 'contact', serviceId?: string) => {
+    let path = '/';
+    if (page === 'services') {
+      path = '/services';
+      if (serviceId) {
+        window.location.hash = `service-${serviceId}`;
+      }
+    } else if (page === 'contact') {
+      path = '/contact';
+    } else if (page === 'home') {
+      path = '/home';
+    }
+    
+    // Update URL without page reload
+    window.history.pushState({ page }, '', path);
+  };
 
   const refreshUserData = async () => {
     try {
@@ -369,8 +416,8 @@ const App: React.FC = () => {
     );
   }
 
-  // Show login screen if not authenticated
-  if (!isAuthenticated) {
+  // Show public pages if requested (even when authenticated) or if not authenticated
+  if (!isAuthenticated || showPublicPages) {
     if (showLogin) {
       return (
         <Login 
@@ -378,14 +425,17 @@ const App: React.FC = () => {
           onHomeClick={() => {
             setShowLogin(false);
             setCurrentPage('home');
+            updateURL('home');
           }}
           onServicesClick={() => {
             setShowLogin(false);
             setCurrentPage('services');
+            updateURL('services');
           }}
           onContactClick={() => {
             setShowLogin(false);
             setCurrentPage('contact');
+            updateURL('contact');
           }}
         />
       );
@@ -393,17 +443,23 @@ const App: React.FC = () => {
     
     // Show different pages based on currentPage state
     if (currentPage === 'services') {
-      // Extract serviceId from hash if present (e.g., #service-1)
+      // Extract serviceId from hash if present (e.g., #service-abc123)
       const hash = window.location.hash;
-      const serviceIdMatch = hash.match(/service-(\d+)/);
-      const serviceId = serviceIdMatch ? parseInt(serviceIdMatch[1]) : undefined;
+      const serviceIdMatch = hash.match(/service-([^/]+)/);
+      const serviceId = serviceIdMatch ? serviceIdMatch[1] : undefined;
       
       return (
         <>
           <ServicesPage
             onLoginClick={() => setShowLogin(true)}
-            onContactClick={() => setCurrentPage('contact')}
-            onHomeClick={() => setCurrentPage('home')}
+            onContactClick={() => {
+              setCurrentPage('contact');
+              updateURL('contact');
+            }}
+            onHomeClick={() => {
+              setCurrentPage('home');
+              updateURL('home');
+            }}
             serviceId={serviceId}
           />
           <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" useBusinessSettings={true} />
@@ -416,8 +472,14 @@ const App: React.FC = () => {
         <>
           <ContactPage
             onLoginClick={() => setShowLogin(true)}
-            onServicesClick={() => setCurrentPage('services')}
-            onHomeClick={() => setCurrentPage('home')}
+            onServicesClick={() => {
+              setCurrentPage('services');
+              updateURL('services');
+            }}
+            onHomeClick={() => {
+              setCurrentPage('home');
+              updateURL('home');
+            }}
           />
           <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" useBusinessSettings={true} />
         </>
@@ -430,6 +492,7 @@ const App: React.FC = () => {
           onLoginClick={() => setShowLogin(true)}
           onServicesClick={(serviceId) => {
             setCurrentPage('services');
+            updateURL('services', serviceId);
             // Set hash for scrolling to specific service
             if (serviceId) {
               setTimeout(() => {
@@ -437,7 +500,10 @@ const App: React.FC = () => {
               }, 100);
             }
           }}
-          onContactClick={() => setCurrentPage('contact')}
+          onContactClick={() => {
+            setCurrentPage('contact');
+            updateURL('contact');
+          }}
         />
         <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" useBusinessSettings={true} />
       </>
@@ -468,15 +534,145 @@ const App: React.FC = () => {
   const user = currentUser || authService.getUser();
   const isAdmin = !!(user?.is_superuser);
 
+  const handleHeaderHomeClick = () => {
+    // Navigate to home page (public view) but keep user logged in
+    setCurrentPage('home');
+    setShowPublicPages(true);
+    setShowLogin(false);
+    updateURL('home');
+  };
+
+  const handleHeaderServicesClick = () => {
+    setCurrentPage('services');
+    setShowPublicPages(true);
+    setShowLogin(false);
+    updateURL('services');
+  };
+
+  const handleHeaderContactClick = () => {
+    setCurrentPage('contact');
+    setShowPublicPages(true);
+    setShowLogin(false);
+    updateURL('contact');
+  };
+
+  // If showing public pages while authenticated, show them with Header
+  if (isAuthenticated && showPublicPages) {
+    if (currentPage === 'services') {
+      const hash = window.location.hash;
+      const serviceIdMatch = hash.match(/service-([^/]+)/);
+      const serviceId = serviceIdMatch ? serviceIdMatch[1] : undefined;
+      
+      return (
+        <>
+          <Header
+            isAuthenticated={isAuthenticated}
+            onLoginClick={() => {
+              setShowPublicPages(false);
+              setShowLogin(false);
+            }}
+            onLogoutClick={handleLogout}
+            onHomeClick={handleHeaderHomeClick}
+            onServicesClick={handleHeaderServicesClick}
+            onContactClick={handleHeaderContactClick}
+          />
+          <ServicesPage
+            onLoginClick={() => {
+              setShowPublicPages(false);
+              setShowLogin(false);
+            }}
+            onContactClick={handleHeaderContactClick}
+            onHomeClick={handleHeaderHomeClick}
+            serviceId={serviceId}
+          />
+          <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" useBusinessSettings={true} />
+        </>
+      );
+    }
+    
+    if (currentPage === 'contact') {
+      return (
+        <>
+          <Header
+            isAuthenticated={isAuthenticated}
+            onLoginClick={() => {
+              setShowPublicPages(false);
+              setShowLogin(false);
+            }}
+            onLogoutClick={handleLogout}
+            onHomeClick={handleHeaderHomeClick}
+            onServicesClick={handleHeaderServicesClick}
+            onContactClick={handleHeaderContactClick}
+          />
+          <ContactPage
+            onLoginClick={() => {
+              setShowPublicPages(false);
+              setShowLogin(false);
+            }}
+            onServicesClick={handleHeaderServicesClick}
+            onHomeClick={handleHeaderHomeClick}
+          />
+          <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" useBusinessSettings={true} />
+        </>
+      );
+    }
+    
+    return (
+      <>
+        <Header
+          isAuthenticated={isAuthenticated}
+          onLoginClick={() => {
+            setShowPublicPages(false);
+            setShowLogin(false);
+          }}
+          onLogoutClick={handleLogout}
+          onHomeClick={handleHeaderHomeClick}
+          onServicesClick={handleHeaderServicesClick}
+          onContactClick={handleHeaderContactClick}
+        />
+        <HomePage
+          onLoginClick={() => {
+            setShowPublicPages(false);
+            setShowLogin(false);
+          }}
+          onServicesClick={(serviceId) => {
+            setCurrentPage('services');
+            updateURL('services', serviceId);
+            if (serviceId) {
+              setTimeout(() => {
+                window.location.hash = `service-${serviceId}`;
+              }, 100);
+            }
+          }}
+          onContactClick={handleHeaderContactClick}
+        />
+        <WhatsAppChat phoneNumber="61481943940" businessName="Peres Systems" useBusinessSettings={true} />
+      </>
+    );
+  }
+
+  // Show dashboard when authenticated and not showing public pages
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
-      <Sidebar 
-        currentView={currentView} 
-        onNavigate={setCurrentView} 
-        onLogout={handleLogout}
-        isAdmin={isAdmin}
+    <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+      <Header
+        isAuthenticated={isAuthenticated}
+        onLoginClick={() => setShowLogin(true)}
+        onLogoutClick={handleLogout}
+        onHomeClick={handleHeaderHomeClick}
+        onServicesClick={handleHeaderServicesClick}
+        onContactClick={handleHeaderContactClick}
       />
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar 
+          currentView={currentView} 
+          onNavigate={(view) => {
+            setCurrentView(view);
+            setShowPublicPages(false); // Return to dashboard when navigating sidebar
+          }}
+          onLogout={handleLogout}
+          isAdmin={isAdmin}
+        />
+        <main className="flex-1 p-6 md:p-10 overflow-y-auto">
         {error && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg dark:bg-red-900 dark:border-red-700 dark:text-red-200">
             <p className="font-semibold">Error:</p>
@@ -501,7 +697,8 @@ const App: React.FC = () => {
           </div>
         )}
         {renderContent()}
-      </main>
+        </main>
+      </div>
     </div>
   );
 };

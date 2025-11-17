@@ -97,3 +97,52 @@ export const FileIcon = (props: React.SVGProps<SVGSVGElement>) => (
         <polyline points="13 2 13 9 20 9"></polyline>
     </svg>
 );
+
+// Service icons
+export const CloudIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+);
+
+export const ShieldIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+);
+
+export const DatabaseIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+);
+
+export const HeadsetIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
+);
+
+export const NetworkIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="16" y="16" width="6" height="6" rx="1"></rect><rect x="2" y="16" width="6" height="6" rx="1"></rect><rect x="9" y="2" width="6" height="6" rx="1"></rect><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"></path><path d="M12 12V8"></path></svg>
+);
+
+export const CodeIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+);
+
+// Default icon if icon_name doesn't match
+export const DefaultIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+);
+
+// Icon mapping function
+export const getIconComponent = (iconName?: string | null): React.ComponentType<React.SVGProps<SVGSVGElement>> => {
+  const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
+    'cloud': CloudIcon,
+    'shield': ShieldIcon,
+    'database': DatabaseIcon,
+    'headset': HeadsetIcon,
+    'network': NetworkIcon,
+    'code': CodeIcon,
+  };
+
+  if (!iconName) {
+    return DefaultIcon;
+  }
+
+  const normalizedName = iconName.toLowerCase().trim();
+  return iconMap[normalizedName] || DefaultIcon;
+};
