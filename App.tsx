@@ -209,7 +209,11 @@ const App: React.FC = () => {
   }, [isAuthenticated]);
 
   const handleLoginSuccess = async () => {
+    // Hide login form and public pages, show dashboard
+    setShowLogin(false);
+    setShowPublicPages(false);
     setIsAuthenticated(true);
+    
     try {
       // Fetch fresh user data after login (force refresh to get latest is_superuser status)
       const user = await authService.getCurrentUser(true);
