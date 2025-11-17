@@ -114,15 +114,20 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onHomeClick, onSer
     }
 
     if (window.google && window.google.accounts) {
+      // Use prompt with FedCM-compatible approach
+      // The callback is optional and won't cause issues when FedCM becomes mandatory
       window.google.accounts.id.prompt((notification: any) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // Fallback: render button manually
-          const buttonContainer = document.getElementById('google-signin-button');
-          if (buttonContainer) {
-            window.google!.accounts.id.renderButton(
-              buttonContainer,
-              { theme: 'outline', size: 'large', width: '100%' }
-            );
+        // Only handle if notification is provided (FedCM compatible)
+        if (notification) {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            // Fallback: render button manually
+            const buttonContainer = document.getElementById('google-signin-button');
+            if (buttonContainer) {
+              window.google!.accounts.id.renderButton(
+                buttonContainer,
+                { theme: 'outline', size: 'large', width: '100%' }
+              );
+            }
           }
         }
       });

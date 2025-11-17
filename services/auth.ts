@@ -134,7 +134,12 @@ class AuthService {
     }
     
     const requestBody = { token: credential };
-    console.log('Google login request:', { hasToken: !!credential, tokenLength: credential.length });
+    console.log('Google login request:', { 
+      hasToken: !!credential, 
+      tokenLength: credential.length,
+      tokenPreview: credential.substring(0, 50) + '...',
+      requestBody: { token: '[REDACTED]' }
+    });
     
     const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
       method: 'POST',
