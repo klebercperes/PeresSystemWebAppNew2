@@ -141,7 +141,7 @@ const Footer: React.FC = () => {
               </li>
               <li>
                 <a
-                  href={`tel:${phone.replace(/\s/g, '')}`}
+                  href={`tel:${phone.replace(/[\s\-\(\)]/g, '')}`}
                   className="hover:text-white transition-colors"
                 >
                   {phone}

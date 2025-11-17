@@ -25,7 +25,7 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated, onLoginClick, onLogout
             )}
           </div>
           <div className="flex items-center space-x-4">
-            {!isAuthenticated && onHomeClick && (
+            {onHomeClick && (
               <button
                 onClick={onHomeClick}
                 className="px-4 py-2 text-white font-semibold rounded-md hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
@@ -33,7 +33,7 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated, onLoginClick, onLogout
                 Home
               </button>
             )}
-            {!isAuthenticated && onServicesClick && (
+            {onServicesClick && (
               <button
                 onClick={onServicesClick}
                 className="px-4 py-2 text-white font-semibold rounded-md hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
@@ -41,7 +41,7 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated, onLoginClick, onLogout
                 Services
               </button>
             )}
-            {!isAuthenticated && onContactClick && (
+            {onContactClick && (
               <button
                 onClick={onContactClick}
                 className="px-4 py-2 text-white font-semibold rounded-md hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
